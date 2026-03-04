@@ -1,0 +1,10 @@
+flask
+flask-cors
+pandas
+numpy
+hmmlearn
+statsmodels
+matplotlib
+yfinance
+scipy
+openpyxl

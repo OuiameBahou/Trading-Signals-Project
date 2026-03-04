@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lead-Lag Signal Platform | Attijariwafa Bank</title>
+  <meta name="description" content="Professional Lead-Lag Detection & Trading Signal Platform — Attijariwafa Bank Quant Research"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">AWB</div>
+      <div class="logo-text">
+        <span class="brand">ATTIJARIWAFA</span>
+        <span class="sub">LEAD-LAG PLATFORM</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Overview</div>
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" data-page="signals">
+        <span class="nav-icon">📡</span> Signal Scanner
+        <span class="nav-badge" id="nav-badge-signals">13</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Leader / Suiveur</div>
+      <div class="nav-item" data-page="pairs">
+        <span class="nav-icon">🔗</span> Paires Officielles
+      </div>
+      <div class="nav-item" data-page="network">
+        <span class="nav-icon">🕸️</span> Réseau de Leadership
+      </div>
+      <div class="nav-item" data-page="granger">
+        <span class="nav-icon">🏆</span> Granger Scorecard
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Analyse</div>
+      <div class="nav-item" data-page="correlation">
+        <span class="nav-icon">🌡️</span> Matrice de Corrélation
+      </div>
+      <div class="nav-item" data-page="regimes">
+        <span class="nav-icon">🔄</span> Régimes de Marché
+      </div>
+      <div class="nav-item" data-page="stationarity">
+        <span class="nav-icon">📈</span> Tests Statistiques
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      Données: 2015–2026 · 40 actifs<br/>
+      © 2026 Attijariwafa Bank Research
+    </div>
+  </nav>
+
+  <!-- ══════════ MAIN CONTENT ══════════ -->
+  <div class="main-content">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <span id="topbar-title" class="topbar-title">Dashboard</span>
+      <div class="regime-badge">
+        <span class="regime-dot bull" id="regime-dot"></span>
+        <span id="regime-txt">Chargement…</span>
+      </div>
+      <div class="topbar-time" id="topbar-time"></div>
+    </div>
+
+    <!-- ══ PAGE: DASHBOARD ══ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1>📊 Tableau de Bord <span style="color:var(--red)">Lead-Lag</span></h1>
+        <p>Vue globale des relations leader/suiveur détectées sur 40 actifs internationaux (2015–2026)</p>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Paires Officielles</div>
+          <div class="kpi-value red" id="kpi-pairs">—</div>
+          <div class="kpi-sub">Validées (3 méthodes)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Relations Hub</div>
+          <div class="kpi-value blue" id="kpi-hub">—</div>
+          <div class="kpi-sub">All-pairs discovery</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Granger Significatifs</div>
+          <div class="kpi-value purple" id="kpi-granger">—</div>
+          <div class="kpi-sub">p &lt; 0.05</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Actifs Analysés</div>
+          <div class="kpi-value gold" id="kpi-assets">—</div>
+          <div class="kpi-sub">Indices · FX · Commo · Bonds</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Top Leader</div>
+          <div class="kpi-value green" id="kpi-leader" style="font-size:18px">—</div>
+          <div class="kpi-sub">Score moyen le plus élevé</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Régime Actuel</div>
+          <div class="kpi-value" id="kpi-regime" style="font-size:14px;padding-top:8px">—</div>
+          <div class="kpi-sub">HMM 3 états</div>
+        </div>
+      </div>
+
+      <div class="grid-2 section-gap">
+        <!-- Top Pairs Chart -->
+        <div class="card col-span-2">
+          <div class="card-header">
+            <span class="card-title">🔝 Paires Leader→Suiveur — Score Composite Final</span>
+            <span class="badge badge-red">Validé · 3 méthodes</span>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrap" style="height:360px">
+              <canvas id="chart-top-pairs"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Granger Leader Ranking -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🏅 Classement Net Granger (Leadership)</span>
+            <span class="badge badge-blue">Causalité de Granger</span>
+          </div>
+          <div class="card-body">
+            <div id="leader-ranking" class="ranking-list">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Methodology card -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔬 Méthodologie Quantitative</span>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:12px">
+                <div style="font-weight:700;font-size:12px;color:#3b82f6;margin-bottom:4px">① Cross-Correlation + Lag Optimal</div>
+                <p style="font-size:11px;color:#8890a8">Scan de lags −10 à +10 jours. Score de lag basé sur le gain de corrélation maximal.</p>
+              </div>
+              <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:12px">
+                <div style="font-weight:700;font-size:12px;color:#8b5cf6;margin-bottom:4px">② Causalité de Granger (FDR corrigé)</div>
+                <p style="font-size:11px;color:#8890a8">Tests sur max 10 lags. Correction Benjamini-Hochberg. Score = (1 − p_min).</p>
+              </div>
+              <div style="background:rgba(0,214,143,0.08);border:1px solid rgba(0,214,143,0.2);border-radius:8px;padding:12px">
+                <div style="font-weight:700;font-size:12px;color:#00d68f;margin-bottom:4px">③ Modèle VAR + FEVD</div>
+                <p style="font-size:11px;color:#8890a8">VAR(p) sélectionné par AIC. Score VAR basé sur la décomposition de la variance d'erreur de prévision.</p>
+              </div>
+              <div style="background:rgba(200,16,46,0.08);border:1px solid rgba(200,16,46,0.2);border-radius:8px;padding:12px">
+                <div style="font-weight:700;font-size:12px;color:var(--red-light);margin-bottom:4px">④ Score Final Composite</div>
+                <p style="font-size:11px;color:#8890a8">Agrégation pondérée : 40% Lag · 40% Granger · 20% VAR. Seuil : ≥ 3 méthodes concordantes.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: PAIRS ══ -->
+    <div class="page" id="page-pairs">
+      <div class="page-header">
+        <h1>🔗 Paires <span style="color:var(--red)">Leader / Suiveur</span> Officielles</h1>
+        <p>13 paires validées simultanément par Cross-Corrélation, Granger et VAR — Robustesse : Forte</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Toutes les paires détectées</span>
+          <div class="filter-row" style="margin-bottom:0">
+            <input class="filter-input" id="pairs-search" placeholder="🔍 Rechercher asset…"/>
+            <select class="filter-select" id="pairs-cat">
+              <option value="all">Toutes catégories</option>
+              <option value="Indices">Indices</option>
+              <option value="FX_G10">FX G10</option>
+              <option value="Commodites">Commodités</option>
+              <option value="Bonds">Obligations</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-container" style="max-height:600px;overflow-y:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Leader</th><th>Catégorie</th><th>Suiveur</th><th>Catégorie</th>
+                  <th>Corr. Max</th><th>Lag</th><th>Gain Lag</th>
+                  <th>Granger</th><th>VAR</th><th>Score Final</th>
+                </tr>
+              </thead>
+              <tbody id="pairs-tbody">
+                <tr><td colspan="10" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: NETWORK ══ -->
+    <div class="page" id="page-network">
+      <div class="page-header">
+        <h1>🕸️ Réseau de <span style="color:var(--red)">Leadership</span></h1>
+        <p>Graphe interactif des relations leader→suiveur (nœuds rouges = leaders, bleus = suiveurs). Drag pour repositionner.</p>
+      </div>
+      <div class="card section-gap">
+        <div class="card-header">
+          <span class="card-title">Graphe de causalité directionnelle</span>
+          <div style="display:flex;gap:12px;align-items:center">
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:12px;height:12px;background:#C8102E;border-radius:50%;display:inline-block"></span>Leader</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:12px;height:12px;background:#3b82f6;border-radius:50%;display:inline-block"></span>Suiveur</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding:10px">
+          <svg id="network-svg"></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: GRANGER ══ -->
+    <div class="page" id="page-granger">
+      <div class="page-header">
+        <h1>🏆 Granger <span style="color:var(--red)">Scorecard</span></h1>
+        <p>Classement des actifs par net leadership (Cause − Causé-par). Score positif = leader systémique.</p>
+      </div>
+      <div class="card section-gap">
+        <div class="card-header"><span class="card-title">Net Leadership Score (Granger)</span></div>
+        <div class="card-body"><div class="chart-wrap" style="height:320px"><canvas id="chart-granger"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Tableau détaillé</span></div>
+        <div class="card-body" style="padding:0">
+          <div class="table-container" style="max-height:500px;overflow-y:auto">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Actif</th><th>Cause (→)</th><th>Causé par (←)</th><th>Net</th><th>Statut</th></tr>
+              </thead>
+              <tbody id="granger-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: CORRELATION ══ -->
+    <div class="page" id="page-correlation">
+      <div class="page-header">
+        <h1>🌡️ Matrice de <span style="color:var(--red)">Corrélation</span></h1>
+        <p>Pearson sur rendements log-journaliers 2015–2026. Bleu = corrélation positive, Rouge = négative. Survolez pour détail.</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Heatmap interactive — 40 actifs</span>
+          <div style="display:flex;gap:12px;font-size:11px">
+            <span>🔵 Positif</span><span>🔴 Négatif</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="corr-wrap" class="heatmap-container">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+      <div id="heatmap-tooltip" class="heatmap-tooltip"></div>
+    </div>
+
+    <!-- ══ PAGE: REGIMES ══ -->
+    <div class="page" id="page-regimes">
+      <div class="page-header">
+        <h1>🔄 Régimes de <span style="color:var(--red)">Marché</span></h1>
+        <p>Détection par Hidden Markov Model (HMM Gaussien, 3 états) sur le SP500 — 2015 à 2026</p>
+      </div>
+      <div class="kpi-grid" id="regime-stats">
+        <div class="spinner"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Timeline des régimes (HMM)</span></div>
+        <div class="card-body"><div class="chart-wrap" style="height:380px"><canvas id="chart-regimes"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: SIGNALS ══ -->
+    <div class="page" id="page-signals">
+      <div class="page-header">
+        <h1>📡 Signal <span style="color:var(--red)">Scanner</span></h1>
+        <p>Opportunités de trading basées sur les relations leader→suiveur détectées. Lag moyen : 1 jour.</p>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="background:rgba(0,214,143,0.1);border:1px solid rgba(0,214,143,0.3);border-radius:8px;padding:10px 16px;font-size:12px">
+          🔥 <strong>Fort Signal</strong> = Score ≥ 0.75 · Toutes méthodes confirmées
+        </div>
+        <div style="background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:10px 16px;font-size:12px">
+          📶 <strong>Signal</strong> = Score 0.60–0.75 · Granger + Cross-corr
+        </div>
+        <div style="background:rgba(200,16,46,0.1);border:1px solid rgba(200,16,46,0.3);border-radius:8px;padding:10px 16px;font-size:12px">
+          ⚡ Lag moyen : <strong>1 jour</strong> · Inter-catégorie
+        </div>
+      </div>
+      <div class="signal-grid" id="signal-grid">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: STATIONARITY ══ -->
+    <div class="page" id="page-stationarity">
+      <div class="page-header">
+        <h1>📈 Tests <span style="color:var(--red)">Statistiques</span></h1>
+        <p>Stationnarité des séries : ADF (rejet racine unitaire) et KPSS (rejet non-stationnarité). Prérequis pour Granger et VAR.</p>
+      </div>
+      <div class="grid-2 section-gap">
+        <div class="card col-span-2">
+          <div class="card-header"><span class="card-title">Résultats ADF + KPSS par actif</span></div>
+          <div class="card-body" style="padding:0">
+            <div class="table-container" style="max-height:450px;overflow-y:auto">
+              <table>
+                <thead>
+                  <tr><th>Actif</th><th>ADF Stat</th><th>ADF p-val</th><th>KPSS Stat</th><th>KPSS p-val</th><th>Verdict</th></tr>
+                </thead>
+                <tbody id="stat-tbody">
+                  <tr><td colspan="6" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Distribution stationnarité</span></div>
+          <div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="chart-stat"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Interprétation</span></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+              <p style="color:#8890a8">Les rendements logarithmiques sont quasi-universellement <strong style="color:#00d68f">stationnaires</strong> — condition nécessaire pour la validité des tests de Granger et du modèle VAR.</p>
+              <p style="color:#8890a8"><strong style="color:var(--red-light)">ADF</strong> : Rejet H₀ (racine unitaire) → p &lt; 0.05 ⇒ série stationnaire</p>
+              <p style="color:#8890a8"><strong style="color:#3b82f6">KPSS</strong> : Non-rejet H₀ (stationnarité) → p &gt; 0.05 ⇒ série stationnaire</p>
+              <p style="color:#8890a8">Les deux tests concordants garantissent la robustesse de la conclusion statistique.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /app-layout -->
+
+<script src="/static/main.js"></script>
+</body>
+</html>
