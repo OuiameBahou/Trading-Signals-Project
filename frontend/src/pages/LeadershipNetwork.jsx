@@ -5,29 +5,32 @@ import useFetch from '../hooks/useFetch';
 
 // ─── Category color map ────────────────────────────────────────────────────────
 const CAT_COLORS = {
-    'FX_G10':       '#3b82f6',  // blue
-    'FX':           '#3b82f6',
-    'Indices':      '#f43f5e',  // rose
-    'Index':        '#f43f5e',
-    'Bonds':        '#06b6d4',  // cyan
-    'Bond':         '#06b6d4',
-    'Commodites':   '#f59e0b',  // amber
-    'Commodity':    '#f59e0b',
-    'Equities':     '#a855f7',  // purple
-    'Equity':       '#a855f7',
+    'Rates': '#06b6d4',  // cyan
+    'FX G10': '#3b82f6',  // blue
+    'Commodities': '#f59e0b',  // amber
+    'Indices': '#f43f5e',  // rose
+    'FX_G10': '#3b82f6',
+    'FX': '#3b82f6',
+    'Bonds': '#06b6d4',
+    'Bond': '#06b6d4',
+    'Commodites': '#f59e0b',
+    'Commodity': '#f59e0b',
+    'Index': '#f43f5e',
+    'Equities': '#a855f7',
+    'Equity': '#a855f7',
 };
 
 const CAT_LABELS = {
-    'FX_G10':     'FX / G10',
-    'FX':         'FX / G10',
-    'Indices':    'Indices',
-    'Index':      'Indices',
-    'Bonds':      'Bonds',
-    'Bond':       'Bonds',
+    'FX_G10': 'FX / G10',
+    'FX': 'FX / G10',
+    'Indices': 'Indices',
+    'Index': 'Indices',
+    'Bonds': 'Bonds',
+    'Bond': 'Bonds',
     'Commodites': 'Commodities',
-    'Commodity':  'Commodities',
-    'Equities':   'Equities',
-    'Equity':     'Equities',
+    'Commodity': 'Commodities',
+    'Equities': 'Equities',
+    'Equity': 'Equities',
 };
 
 function getColor(cat) {
@@ -48,34 +51,34 @@ function getLabel(cat) {
 
 // ─── Unique categories for legend/filter ──────────────────────────────────────
 const DISPLAY_CATS = [
-    { key: 'Indices',    label: 'Indices',      color: '#f43f5e' },
-    { key: 'FX_G10',     label: 'FX / G10',     color: '#3b82f6' },
-    { key: 'Bonds',      label: 'Bonds',        color: '#06b6d4' },
-    { key: 'Commodites', label: 'Commodities',  color: '#f59e0b' },
-    { key: 'Equities',   label: 'Equities',     color: '#a855f7' },
+    { key: 'Indices', label: 'Indices', color: '#f43f5e' },
+    { key: 'FX G10', label: 'FX / G10', color: '#3b82f6' },
+    { key: 'Rates', label: 'Rates', color: '#06b6d4' },
+    { key: 'Commodities', label: 'Commodities', color: '#f59e0b' },
+    { key: 'Equities', label: 'Equities', color: '#a855f7' },
 ];
 
 // ─── Main component ────────────────────────────────────────────────────────────
 const LeadershipNetwork = () => {
     const { data: allPairs, loading } = useFetch('/api/all_pairs');
-    const svgRef       = useRef(null);
+    const svgRef = useRef(null);
     const containerRef = useRef(null);
-    const simRef       = useRef(null);
+    const simRef = useRef(null);
 
-    const [dimensions, setDimensions]         = useState({ width: 800, height: 600 });
-    const [activeCats, setActiveCats]         = useState(() => Object.fromEntries(DISPLAY_CATS.map(c => [c.key, true])));
-    const [minMethods, setMinMethods]         = useState(1);   // 1 = any, 2 = double+, 3 = triple only
-    const [searchAsset, setSearchAsset]       = useState('');
+    const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+    const [activeCats, setActiveCats] = useState(() => Object.fromEntries(DISPLAY_CATS.map(c => [c.key, true])));
+    const [minMethods, setMinMethods] = useState(1);   // 1 = any, 2 = double+, 3 = triple only
+    const [searchAsset, setSearchAsset] = useState('');
     const [selectedAssets, setSelectedAssets] = useState(new Set()); // empty = all
-    const [filterOpen, setFilterOpen]         = useState(false);
-    const [hoveredNode, setHoveredNode]       = useState(null);
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [hoveredNode, setHoveredNode] = useState(null);
 
     // Resize observer
     useEffect(() => {
         const update = () => {
             if (containerRef.current) {
                 setDimensions({
-                    width:  containerRef.current.clientWidth,
+                    width: containerRef.current.clientWidth,
                     height: containerRef.current.clientHeight,
                 });
             }
@@ -91,7 +94,7 @@ const LeadershipNetwork = () => {
         if (!allPairs) return [];
         const map = {};
         allPairs.forEach(p => {
-            if (p.Leader)   map[p.Leader]   = p.Cat_Leader;
+            if (p.Leader) map[p.Leader] = p.Cat_Leader;
             if (p.Follower) map[p.Follower] = p.Cat_Follower;
         });
         return Object.entries(map).map(([id, cat]) => ({ id, cat })).sort((a, b) => a.id.localeCompare(b.id));
@@ -127,17 +130,17 @@ const LeadershipNetwork = () => {
             if (p.Follower && !nodeMap[p.Follower]) {
                 nodeMap[p.Follower] = { id: p.Follower, cat: p.Cat_Follower, leaderCount: 0, followerCount: 0 };
             }
-            if (nodeMap[p.Leader])   nodeMap[p.Leader].leaderCount++;
+            if (nodeMap[p.Leader]) nodeMap[p.Leader].leaderCount++;
             if (nodeMap[p.Follower]) nodeMap[p.Follower].followerCount++;
         });
 
         const nodes = Object.values(nodeMap);
         const links = filtered.map(p => ({
-            source:    p.Leader,
-            target:    p.Follower,
-            nMethods:  p.N_Methods || 1,
-            score:     p.Score_Final || 0,
-            lag:       p.Lead_Days,
+            source: p.Leader,
+            target: p.Follower,
+            nMethods: p.N_Methods || 1,
+            score: p.Score_Final || 0,
+            lag: p.Lead_Days,
         }));
 
         return { nodes, links };
@@ -162,7 +165,7 @@ const LeadershipNetwork = () => {
         // Defs: arrowheads per method count
         const defs = svg.append('defs');
         [1, 2, 3].forEach(n => {
-            const col = n === 3 ? '#f43f5e' : n === 2 ? '#3b82f6' : '#4b5563';
+            const col = n === 3 ? '#C8102E' : n === 2 ? '#3b82f6' : '#FFB81C';
             defs.append('marker')
                 .attr('id', `arrow-${n}`)
                 .attr('viewBox', '0 -5 10 10')
@@ -177,18 +180,18 @@ const LeadershipNetwork = () => {
         });
 
         // Links
-        const linkColor = n => n === 3 ? '#f43f5e' : n === 2 ? '#3b82f6' : '#374151';
+        const linkColor = n => n === 3 ? '#C8102E' : n === 2 ? '#3b82f6' : '#FFB81C';
         const link = container.append('g')
             .selectAll('line')
             .data(links)
             .join('line')
-            .attr('stroke',         d => linkColor(d.nMethods))
-            .attr('stroke-width',   d => d.nMethods === 3 ? 2 : d.nMethods === 2 ? 1.5 : 1)
+            .attr('stroke', d => linkColor(d.nMethods))
+            .attr('stroke-width', d => d.nMethods === 3 ? 2 : d.nMethods === 2 ? 1.5 : 1)
             .attr('stroke-opacity', d => d.nMethods === 3 ? 0.8 : d.nMethods === 2 ? 0.5 : 0.25)
-            .attr('marker-end',     d => `url(#arrow-${d.nMethods})`);
+            .attr('marker-end', d => `url(#arrow-${d.nMethods})`);
 
-        // Nodes
-        const nodeRadius = d => 10 + d.leaderCount * 4;
+        // Nodes - uniform radius
+        const NODE_R = 12;
 
         const node = container.append('g')
             .selectAll('g')
@@ -200,36 +203,36 @@ const LeadershipNetwork = () => {
                     if (!e.active) sim.alphaTarget(0.3).restart();
                     d.fx = d.x; d.fy = d.y;
                 })
-                .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
-                .on('end',   (e, d) => {
+                .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+                .on('end', (e, d) => {
                     if (!e.active) sim.alphaTarget(0);
                     d.fx = null; d.fy = null;
                 })
             );
 
-        // Outer glow ring for leaders
+        // Outer ring for leaders
         node.filter(d => d.leaderCount > 0)
             .append('circle')
-            .attr('r', d => nodeRadius(d) + 5)
+            .attr('r', NODE_R + 4)
             .attr('fill', 'none')
             .attr('stroke', d => getColor(d.cat))
             .attr('stroke-width', 1)
-            .attr('stroke-opacity', 0.3);
+            .attr('stroke-opacity', 0.35);
 
         // Main circle
         node.append('circle')
-            .attr('r',            d => nodeRadius(d))
-            .attr('fill',         d => getColor(d.cat) + '22')
-            .attr('stroke',       d => getColor(d.cat))
-            .attr('stroke-width', d => d.leaderCount > 2 ? 2.5 : 1.5);
+            .attr('r', NODE_R)
+            .attr('fill', d => getColor(d.cat) + '22')
+            .attr('stroke', d => getColor(d.cat))
+            .attr('stroke-width', 1.5);
 
         // Label
         node.append('text')
             .text(d => d.id)
             .attr('text-anchor', 'middle')
-            .attr('dy', d => nodeRadius(d) + 14)
-            .attr('fill',      '#e5e7eb')
-            .attr('font-size', d => d.leaderCount > 2 ? '11px' : '9px')
+            .attr('dy', NODE_R + 12)
+            .attr('fill', 'var(--text)')
+            .attr('font-size', '9px')
             .attr('font-weight', 'bold')
             .attr('font-family', 'monospace');
 
@@ -239,16 +242,16 @@ const LeadershipNetwork = () => {
             .text(d => d.leaderCount)
             .attr('text-anchor', 'middle')
             .attr('dy', '0.35em')
-            .attr('fill',      d => getColor(d.cat))
-            .attr('font-size', '9px')
-            .attr('font-weight', 'black');
+            .attr('fill', d => getColor(d.cat))
+            .attr('font-size', '8px')
+            .attr('font-weight', 'bold');
 
         // Simulation
         const sim = d3.forceSimulation(nodes)
-            .force('link',      d3.forceLink(links).id(d => d.id).distance(120).strength(0.5))
-            .force('charge',    d3.forceManyBody().strength(-300))
-            .force('center',    d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
-            .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + 20));
+            .force('link', d3.forceLink(links).id(d => d.id).distance(100).strength(0.5))
+            .force('charge', d3.forceManyBody().strength(-200))
+            .force('center', d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
+            .force('collision', d3.forceCollide().radius(NODE_R + 14));
 
         simRef.current = sim;
 
@@ -285,21 +288,21 @@ const LeadershipNetwork = () => {
     );
 
     return (
-        <div className="h-full flex flex-col gap-4 animate-in fade-in duration-700">
+        <div className="h-full flex flex-col gap-4">
 
             {/* Header */}
             <div className="flex items-end justify-between flex-shrink-0">
                 <div>
-                    <h2 className="text-3xl font-black tracking-tight">
-                        Leadership <span className="text-[#C8102E]">Network</span>
+                    <h2 className="text-2xl font-black t-text transition-colors">
+                        Leadership <span className="text-awb-red">Network</span>
                     </h2>
-                    <p className="text-gray-500 text-sm font-black uppercase tracking-widest mt-1">
+                    <p className="t-text-m text-xs font-bold uppercase tracking-widest mt-1">
                         Systemic influence ecosystem · {nodes.length} assets · {links.length} relationships
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Min methods filter */}
-                    <div className="flex items-center gap-1 bg-[#0d1117] border border-white/[0.06] rounded-xl p-1">
+                    <div className="flex items-center gap-1 t-card t-border border rounded-xl p-1 transition-colors">
                         {[
                             { v: 1, label: 'Any' },
                             { v: 2, label: '2+' },
@@ -308,24 +311,22 @@ const LeadershipNetwork = () => {
                             <button
                                 key={opt.v}
                                 onClick={() => setMinMethods(opt.v)}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                                    minMethods === opt.v
-                                        ? 'bg-[#C8102E] text-white'
-                                        : 'text-gray-500 hover:text-gray-300'
-                                }`}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${minMethods === opt.v
+                                    ? 'bg-awb-red text-white'
+                                    : 't-text-m hover:t-text'
+                                    }`}
                             >{opt.label}</button>
                         ))}
                     </div>
                     <button onClick={resetSim}
-                        className="p-2.5 bg-[#0d1117] hover:bg-white/[0.05] border border-white/[0.06] rounded-xl text-gray-500 hover:text-white transition-all">
+                        className="p-2.5 t-card hover:bg-[var(--surface-hover)] t-border border rounded-xl t-text-m hover:t-text transition-colors">
                         <RefreshCw size={16} />
                     </button>
                     <button onClick={() => setFilterOpen(o => !o)}
-                        className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                            filterOpen || selectedAssets.size > 0
-                                ? 'bg-[#C8102E]/10 border-[#C8102E]/30 text-[#C8102E]'
-                                : 'bg-[#0d1117] border-white/[0.06] text-gray-500 hover:text-white'
-                        }`}>
+                        className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors ${filterOpen || selectedAssets.size > 0
+                            ? 'bg-awb-red/10 border-awb-red/30 text-awb-red'
+                            : 't-card t-border t-text-m hover:t-text'
+                            }`}>
                         <Filter size={13} />
                         Assets {selectedAssets.size > 0 && `(${selectedAssets.size})`}
                         <ChevronDown size={11} className={filterOpen ? 'rotate-180' : ''} />
@@ -335,26 +336,26 @@ const LeadershipNetwork = () => {
 
             {/* Asset filter dropdown */}
             {filterOpen && (
-                <div className="flex-shrink-0 bg-[#0d1117] border border-white/[0.08] rounded-2xl p-4">
+                <div className="flex-shrink-0 t-elevated t-border border rounded-2xl p-4 transition-colors">
                     <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                        <span className="text-[10px] font-bold t-text-m uppercase tracking-widest transition-colors">
                             Filter by asset — select specific assets or leave empty for all
                         </span>
                         {selectedAssets.size > 0 && (
                             <button onClick={() => setSelectedAssets(new Set())}
-                                className="text-[9px] font-black text-[#C8102E] uppercase tracking-widest hover:underline">
+                                className="text-[9px] font-bold text-awb-red uppercase tracking-widest hover:underline">
                                 Clear all
                             </button>
                         )}
                     </div>
                     <div className="relative mb-3">
-                        <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+                        <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 t-text-m transition-colors" />
                         <input
                             type="text"
                             placeholder="Search asset..."
                             value={searchAsset}
                             onChange={e => setSearchAsset(e.target.value)}
-                            className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl py-2 pl-8 pr-4 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-[#C8102E]/30"
+                            className="w-full t-card t-border border rounded-xl py-2 pl-8 pr-4 text-xs t-text focus:outline-none focus:border-awb-red/30 focus:shadow-sm transition-colors"
                         />
                     </div>
                     <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar">
@@ -369,8 +370,8 @@ const LeadershipNetwork = () => {
                                     color: getColor(a.cat),
                                 } : {
                                     background: 'transparent',
-                                    borderColor: 'rgba(255,255,255,0.06)',
-                                    color: '#6b7280',
+                                    borderColor: 'var(--border-strong)',
+                                    color: 'var(--text-muted)',
                                 }}
                             >
                                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -384,7 +385,7 @@ const LeadershipNetwork = () => {
             )}
 
             {/* Main graph area */}
-            <div className="flex-1 relative bg-[#080c10] border border-white/[0.06] rounded-2xl overflow-hidden min-h-0"
+            <div className="t-card flex-1 relative t-border border rounded-2xl overflow-hidden min-h-0 transition-colors"
                 ref={containerRef}>
 
                 {/* Category legend */}
@@ -393,15 +394,14 @@ const LeadershipNetwork = () => {
                         <button
                             key={cat.key}
                             onClick={() => toggleCat(cat.key)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${
-                                activeCats[cat.key]
-                                    ? 'bg-black/40 backdrop-blur border-white/10'
-                                    : 'bg-transparent border-transparent opacity-30'
-                            }`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[9px] font-bold uppercase tracking-widest transition-colors ${activeCats[cat.key]
+                                ? 't-elevated t-border'
+                                : 'bg-transparent border-transparent opacity-50 t-text-s'
+                                }`}
                         >
-                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                style={{ background: activeCats[cat.key] ? cat.color : '#374151' }} />
-                            <span style={{ color: activeCats[cat.key] ? cat.color : '#6b7280' }}>
+                            <span className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ background: activeCats[cat.key] ? cat.color : 'var(--text-muted)' }} />
+                            <span style={{ color: activeCats[cat.key] ? cat.color : 'var(--text-muted)' }}>
                                 {cat.label}
                             </span>
                         </button>
@@ -409,31 +409,27 @@ const LeadershipNetwork = () => {
                 </div>
 
                 {/* Link strength legend */}
-                <div className="absolute top-4 right-4 z-10 bg-black/40 backdrop-blur-md border border-white/[0.06] rounded-xl p-3">
-                    <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest mb-2">Validation</p>
+                <div className="absolute top-4 right-4 z-10 t-elevated t-border border rounded-xl p-3 transition-colors">
+                    <p className="text-[8px] font-bold t-text-m uppercase tracking-widest mb-2 transition-colors">Validation</p>
                     {[
-                        { n: 3, label: 'Triple validated', color: '#f43f5e' },
+                        { n: 3, label: 'Triple validated', color: '#C8102E' },
                         { n: 2, label: 'Double validated', color: '#3b82f6' },
-                        { n: 1, label: 'Single validated', color: '#374151' },
+                        { n: 1, label: 'Single validated', color: '#FFB81C' },
                     ].map(row => (
                         <div key={row.n} className="flex items-center gap-2 mb-1.5">
-                            <div className="w-6 h-[2px] rounded-full" style={{ background: row.color }} />
-                            <span className="text-[9px] font-bold text-gray-500">{row.label}</span>
+                            <div className="w-4 h-[2px] rounded-full" style={{ background: row.color }} />
+                            <span className="text-[9px] font-bold t-text-m transition-colors">{row.label}</span>
                         </div>
                     ))}
-                    <div className="mt-2 pt-2 border-t border-white/5">
-                        <p className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mb-1">Node size</p>
-                        <p className="text-[9px] text-gray-500 italic">= # of assets led</p>
-                    </div>
                 </div>
 
                 {/* Interpretation */}
-                <div className="absolute bottom-4 left-4 z-10 max-w-xs bg-black/40 backdrop-blur-md border border-white/[0.06] rounded-xl p-3">
+                <div className="absolute bottom-4 left-4 z-10 max-w-xs t-elevated t-border border rounded-xl p-3 transition-colors">
                     <div className="flex items-center gap-2 mb-1.5">
-                        <Zap size={11} className="text-[#C8102E]" />
-                        <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">How to read</span>
+                        <Zap size={11} className="text-awb-red" />
+                        <span className="text-[9px] font-bold t-text-m uppercase tracking-widest transition-colors">How to read</span>
                     </div>
-                    <p className="text-[9px] text-gray-500 leading-relaxed italic">
+                    <p className="text-[9px] t-text-s leading-relaxed transition-colors">
                         Arrow = predictive direction (Leader → Follower).
                         Number inside node = assets led.
                         Use toggles to filter by validation level.
@@ -442,10 +438,10 @@ const LeadershipNetwork = () => {
 
                 {/* Loading */}
                 {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[#080c10]/80 z-20">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-20 transition-colors">
                         <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 border-4 border-[#C8102E] border-t-transparent rounded-full animate-spin" />
-                            <span className="mt-3 text-[10px] font-black text-gray-600 uppercase tracking-widest">Building influence graph...</span>
+                            <div className="w-8 h-8 border-4 border-awb-red/20 border-t-awb-red rounded-full animate-spin" />
+                            <span className="mt-3 text-[10px] font-bold t-text uppercase tracking-widest transition-colors">Building influence graph...</span>
                         </div>
                     </div>
                 )}
@@ -453,7 +449,7 @@ const LeadershipNetwork = () => {
                 {/* Empty state */}
                 {!loading && nodes.length === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <p className="text-gray-600 text-sm font-black uppercase tracking-widest">
+                        <p className="t-text-m text-sm font-black uppercase tracking-widest transition-colors">
                             No pairs match the current filters
                         </p>
                     </div>

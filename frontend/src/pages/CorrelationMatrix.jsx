@@ -1,111 +1,137 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
-import { Search, ArrowRightLeft, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { Search, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import useFetch from '../hooks/useFetch';
 
 const CorrelationMatrix = () => {
-    const { data, loading }        = useFetch('/api/correlation_matrix');
-    const { data: assetsMeta }     = useFetch('/api/assets');
-    const canvasRef                = useRef(null);
-    const containerRef             = useRef(null);
-    const transformRef             = useRef(d3.zoomIdentity);
-    const [tooltip, setTooltip]    = useState(null);
+    const { data, loading } = useFetch('/api/correlation_matrix');
+    const { data: assetsMeta } = useFetch('/api/assets');
+    const canvasRef = useRef(null);
+    const wrapperRef = useRef(null);
+    const [tooltip, setTooltip] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('Global');
-    const [dimensions, setDimensions] = useState({ width: 800, height: 700 });
+    const [wrapperWidth, setWrapperWidth] = useState(800);
+    const [zoomLevel, setZoomLevel] = useState(1);
 
-    const LABEL_SIZE = 72;  // px reserved for row/col labels
-    const PAD        = 4;   // gap between cells
+    const LABEL_SIZE = 80;
+    const MIN_CELL = 22;   // minimum cell size in px at zoom 1
+    const PAD = 2;
 
     const categories = useMemo(() =>
         ['Global', ...new Set(assetsMeta?.map(a => a.Category) || [])].filter(Boolean),
-    [assetsMeta]);
+        [assetsMeta]);
 
     const assets = data?.assets || [];
     const matrixData = data?.data || [];
 
-    const filteredAssets = useMemo(() => {
+    // Columns: All assets in the current category
+    const colAssets = useMemo(() => {
         let list = assets;
         if (activeCategory !== 'Global') {
             const catAssets = assetsMeta?.filter(a => a.Category === activeCategory).map(a => a.Asset) || [];
             list = assets.filter(a => catAssets.includes(a));
         }
-        if (searchTerm) list = list.filter(a => a.toLowerCase().includes(searchTerm.toLowerCase()));
         return list;
-    }, [assets, assetsMeta, searchTerm, activeCategory]);
+    }, [assets, assetsMeta, activeCategory]);
 
-    // Build lookup map for fast access
+    // Rows: Only assets matching the search term (from the current category)
+    const rowAssets = useMemo(() => {
+        if (!searchTerm) return colAssets;
+        return colAssets.filter(a => a.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [colAssets, searchTerm]);
+
     const cellMap = useMemo(() => {
         const map = {};
         matrixData.forEach(c => { map[`${c.y}__${c.x}`] = c.v; });
         return map;
     }, [matrixData]);
 
-    const getColor = (val) => {
-        if (val === null || val === undefined) return '#0d1117';
-        if (val >= 0.99) return '#1e293b'; // diagonal
-        const abs = Math.abs(val);
-        if (val > 0) return d3.interpolateRgb('#1e293b', '#C8102E')(abs);
-        return d3.interpolateRgb('#1e293b', '#3b82f6')(abs);
+    const getThemeColors = () => {
+        const isDark = !document.body.classList.contains('light-mode');
+        return {
+            bg: isDark ? '#080c10' : '#ffffff',
+            baseCell: isDark ? '#1e293b' : '#f1f5f9',
+            text: isDark ? '#9ca3af' : '#64748b',
+        };
     };
 
-    // Resize observer
+    const getColor = (val, isDark) => {
+        const colors = getThemeColors();
+        if (val === null || val === undefined) return isDark ? '#0d1117' : '#f8fafc';
+        if (val >= 0.99) return colors.baseCell;
+        const abs = Math.abs(val);
+        if (val > 0) return d3.interpolateRgb(colors.baseCell, '#C8102E')(abs);
+        return d3.interpolateRgb(colors.baseCell, '#3b82f6')(abs);
+    };
+
+    // Track wrapper width
     useEffect(() => {
         const update = () => {
-            if (containerRef.current) {
-                setDimensions({
-                    width:  containerRef.current.clientWidth,
-                    height: containerRef.current.clientHeight,
-                });
+            if (wrapperRef.current) {
+                setWrapperWidth(wrapperRef.current.clientWidth);
             }
         };
         update();
         const ro = new ResizeObserver(update);
-        if (containerRef.current) ro.observe(containerRef.current);
+        if (wrapperRef.current) ro.observe(wrapperRef.current);
         return () => ro.disconnect();
     }, []);
 
-    // Draw canvas
-    const draw = (transform) => {
-        const canvas = canvasRef.current;
-        if (!canvas || !filteredAssets.length) return;
-        const ctx = canvas.getContext('2d');
-        const { width, height } = dimensions;
-        const n = filteredAssets.length;
+    // Computed canvas dimensions — width tracks columns, height tracks rows
+    const canvasDims = useMemo(() => {
+        const numCols = colAssets.length;
+        const numRows = rowAssets.length;
+        if (numCols === 0 || numRows === 0) return { width: wrapperWidth, height: 400, cell: 0, numCols: 0, numRows: 0 };
+        const availW = wrapperWidth - LABEL_SIZE;
+        const cellFromWidth = availW / numCols;
+        const cell = Math.max(cellFromWidth, MIN_CELL) * zoomLevel;
+        const totalW = LABEL_SIZE + numCols * cell;
+        const totalH = LABEL_SIZE + numRows * cell;
+        return { width: Math.ceil(totalW), height: Math.ceil(totalH), cell, numCols, numRows };
+    }, [colAssets.length, rowAssets.length, wrapperWidth, zoomLevel]);
 
-        canvas.width  = width  * window.devicePixelRatio;
-        canvas.height = height * window.devicePixelRatio;
-        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    // Draw canvas
+    const draw = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !rowAssets.length || !colAssets.length) return;
+        const ctx = canvas.getContext('2d');
+        const { width, height, cell, numCols, numRows } = canvasDims;
+        const isDark = !document.body.classList.contains('light-mode');
+        const colors = {
+            bg: isDark ? '#080c10' : '#ffffff',
+            baseCell: isDark ? '#1e293b' : '#f1f5f9',
+            text: isDark ? '#9ca3af' : '#64748b',
+        };
+
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
 
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = '#080c10';
+        ctx.fillStyle = colors.bg;
         ctx.fillRect(0, 0, width, height);
 
-        const availW = width  - LABEL_SIZE;
-        const availH = height - LABEL_SIZE;
-        const cellBase = Math.min(availW, availH) / n;
-        const cell = cellBase * transform.k;
-        const offsetX = LABEL_SIZE + transform.x;
-        const offsetY = LABEL_SIZE + transform.y;
+        const offsetX = LABEL_SIZE;
+        const offsetY = LABEL_SIZE;
 
         // ── Draw cells ──
-        for (let r = 0; r < n; r++) {
-            for (let c = 0; c < n; c++) {
+        for (let r = 0; r < numRows; r++) {
+            for (let c = 0; c < numCols; c++) {
                 const x = offsetX + c * cell;
                 const y = offsetY + r * cell;
-                if (x + cell < LABEL_SIZE || y + cell < LABEL_SIZE) continue;
-                if (x > width || y > height) continue;
 
-                const val = cellMap[`${filteredAssets[r]}__${filteredAssets[c]}`];
-                ctx.fillStyle = getColor(val);
-                ctx.fillRect(x + PAD/2, y + PAD/2, cell - PAD, cell - PAD);
+                const val = cellMap[`${rowAssets[r]}__${colAssets[c]}`];
+                ctx.fillStyle = getColor(val, isDark);
+                ctx.fillRect(x + PAD / 2, y + PAD / 2, cell - PAD, cell - PAD);
 
                 // Value text — only if cell is big enough
                 if (cell > 28 && val !== null && val !== undefined && Math.abs(val) > 0.3) {
-                    ctx.font = `bold ${Math.min(cell * 0.22, 11)}px monospace`;
+                    ctx.font = `bold ${Math.min(cell * 0.28, 11)}px monospace`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillStyle = Math.abs(val) > 0.6 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)';
+                    ctx.fillStyle = Math.abs(val) > 0.6 ? 'rgba(255,255,255,0.9)' : (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)');
                     ctx.fillText(val.toFixed(2), x + cell / 2, y + cell / 2);
                 }
             }
@@ -113,94 +139,78 @@ const CorrelationMatrix = () => {
 
         // ── Column labels (top) ──
         ctx.save();
-        ctx.fillStyle = '#080c10';
+        ctx.fillStyle = colors.bg;
         ctx.fillRect(0, 0, width, LABEL_SIZE);
-        for (let c = 0; c < n; c++) {
+        for (let c = 0; c < numCols; c++) {
             const x = offsetX + c * cell + cell / 2;
-            if (x < LABEL_SIZE || x > width) continue;
             ctx.save();
             ctx.translate(x, LABEL_SIZE - 6);
             ctx.rotate(-Math.PI / 4);
-            ctx.font = `bold ${Math.min(cell * 0.22, 10)}px monospace`;
+            ctx.font = `bold ${Math.min(cell * 0.32, 10)}px monospace`;
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#9ca3af';
-            ctx.fillText(filteredAssets[c], 0, 0);
+            ctx.fillStyle = colors.text;
+            ctx.fillText(colAssets[c], 0, 0);
             ctx.restore();
         }
         ctx.restore();
 
         // ── Row labels (left) ──
         ctx.save();
-        ctx.fillStyle = '#080c10';
+        ctx.fillStyle = colors.bg;
         ctx.fillRect(0, LABEL_SIZE, LABEL_SIZE, height);
-        for (let r = 0; r < n; r++) {
+        for (let r = 0; r < numRows; r++) {
             const y = offsetY + r * cell + cell / 2;
-            if (y < LABEL_SIZE || y > height) continue;
-            ctx.font = `bold ${Math.min(cell * 0.22, 10)}px monospace`;
+            ctx.font = `bold ${Math.min(cell * 0.32, 10)}px monospace`;
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#9ca3af';
-            ctx.fillText(filteredAssets[r], LABEL_SIZE - 6, y);
+            ctx.fillStyle = colors.text;
+            ctx.fillText(rowAssets[r], LABEL_SIZE - 6, y);
         }
         ctx.restore();
 
         // ── Corner block ──
-        ctx.fillStyle = '#080c10';
+        ctx.fillStyle = colors.bg;
         ctx.fillRect(0, 0, LABEL_SIZE, LABEL_SIZE);
-    };
+    }, [colAssets, rowAssets, cellMap, canvasDims]);
 
-    // Zoom setup
+    // Redraw on any change
     useEffect(() => {
-        if (!filteredAssets.length || !canvasRef.current) return;
-        const canvas = canvasRef.current;
+        draw();
+    }, [draw]);
 
-        const zoom = d3.zoom()
-            .scaleExtent([0.3, 10])
-            .on('zoom', (e) => {
-                transformRef.current = e.transform;
-                draw(e.transform);
+    // Add listener to re-draw when theme changes, so D3 canvas catches up dynamically
+    useEffect(() => {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    draw();
+                }
             });
-
-        d3.select(canvas).call(zoom);
-
-        // Initial draw
-        draw(transformRef.current);
-
-        return () => d3.select(canvas).on('.zoom', null);
-    }, [filteredAssets, cellMap, dimensions]);
-
-    // Reset zoom
-    const resetZoom = () => {
-        transformRef.current = d3.zoomIdentity;
-        draw(d3.zoomIdentity);
-        d3.select(canvasRef.current).call(
-            d3.zoom().transform, d3.zoomIdentity
-        );
-    };
+        });
+        observer.observe(document.body, { attributes: true });
+        return () => observer.disconnect();
+    }, [draw]);
 
     // Mouse hover for tooltip
     const handleMouseMove = (e) => {
         const canvas = canvasRef.current;
-        if (!canvas || !filteredAssets.length) return;
-        const rect  = canvas.getBoundingClientRect();
-        const mx    = e.clientX - rect.left;
-        const my    = e.clientY - rect.top;
-        const t     = transformRef.current;
-        const n     = filteredAssets.length;
-        const availW = dimensions.width  - LABEL_SIZE;
-        const availH = dimensions.height - LABEL_SIZE;
-        const cellBase = Math.min(availW, availH) / n;
-        const cell  = cellBase * t.k;
-        const col   = Math.floor((mx - LABEL_SIZE - t.x) / cell);
-        const row   = Math.floor((my - LABEL_SIZE - t.y) / cell);
+        if (!canvas || !rowAssets.length || !colAssets.length) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvasDims.width / rect.width;
+        const scaleY = canvasDims.height / rect.height;
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+        const { cell, numCols, numRows } = canvasDims;
+        const col = Math.floor((mx - LABEL_SIZE) / cell);
+        const row = Math.floor((my - LABEL_SIZE) / cell);
 
-        if (col >= 0 && col < n && row >= 0 && row < n) {
-            const val = cellMap[`${filteredAssets[row]}__${filteredAssets[col]}`];
+        if (col >= 0 && col < numCols && row >= 0 && row < numRows) {
+            const val = cellMap[`${rowAssets[row]}__${colAssets[col]}`];
             setTooltip({
                 x: e.clientX, y: e.clientY,
-                row: filteredAssets[row],
-                col: filteredAssets[col],
+                row: rowAssets[row],
+                col: colAssets[col],
                 val,
             });
         } else {
@@ -208,81 +218,106 @@ const CorrelationMatrix = () => {
         }
     };
 
+    const zoomIn = () => setZoomLevel(z => Math.min(z * 1.3, 4));
+    const zoomOut = () => setZoomLevel(z => Math.max(z / 1.3, 0.3));
+    const resetZoom = () => setZoomLevel(1);
+    const isDarkGlobal = !document.body.classList.contains('light-mode');
+
     return (
-        <div className="h-full flex flex-col gap-4 animate-in fade-in duration-700">
+        <div className="space-y-6" ref={wrapperRef}>
 
             {/* Header */}
-            <div className="flex items-end justify-between flex-shrink-0">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 t-border border-b transition-colors">
                 <div>
-                    <h2 className="text-3xl font-black tracking-tight">
-                        Correlation <span className="text-[#C8102E]">Matrix</span>
+                    <h2 className="text-2xl font-black t-text transition-colors">
+                        Correlation <span className="text-awb-red">Matrix</span>
                     </h2>
-                    <p className="text-gray-500 text-sm font-black uppercase tracking-widest mt-1">
-                        Scroll to zoom · Drag to pan · Hover for values
+                    <p className="t-text-m text-xs font-bold uppercase tracking-widest mt-1 transition-colors">
+                        Hover for values · Use zoom controls or scroll page to explore
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Category filter */}
-                    <div className="flex items-center bg-[#0d1117] border border-white/[0.06] rounded-xl p-1">
+                    <div className="flex items-center t-elevated t-border border rounded-xl p-1 transition-colors">
                         {categories.map(cat => (
                             <button key={cat} onClick={() => setActiveCategory(cat)}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                                    activeCategory === cat ? 'bg-[#C8102E] text-white' : 'text-gray-500 hover:text-gray-300'
-                                }`}>{cat}</button>
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${activeCategory === cat ? 'bg-awb-red text-white' : 't-text-m hover:t-text'
+                                    }`}>{cat}</button>
                         ))}
                     </div>
                     {/* Search */}
                     <div className="relative">
-                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
-                        <input type="text" placeholder="Filter..." value={searchTerm}
+                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 t-text-m transition-colors" />
+                        <input type="text" placeholder="Filter rows..." value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="bg-[#0d1117] border border-white/[0.06] rounded-xl py-2 pl-8 pr-4 text-xs text-gray-300 w-36 focus:outline-none focus:ring-1 focus:ring-[#C8102E]/30" />
+                            className="t-elevated t-border border rounded-xl py-2 pl-8 pr-4 text-xs t-text w-36 focus:outline-none focus:border-awb-red/30 transition-colors" />
                     </div>
-                    {/* Reset zoom */}
+                    {/* Zoom controls */}
+                    <div className="flex items-center gap-1 t-elevated t-border border rounded-xl p-1 transition-colors">
+                        <button onClick={zoomOut}
+                            className="p-2 rounded-lg t-text-m hover:hover:bg-[var(--surface-hover)] hover:t-text transition-colors">
+                            <ZoomOut size={15} />
+                        </button>
+                        <span className="text-[10px] font-bold t-text-m w-10 text-center font-mono transition-colors">{Math.round(zoomLevel * 100)}%</span>
+                        <button onClick={zoomIn}
+                            className="p-2 rounded-lg t-text-m hover:hover:bg-[var(--surface-hover)] hover:t-text transition-colors">
+                            <ZoomIn size={15} />
+                        </button>
+                    </div>
                     <button onClick={resetZoom}
-                        className="p-2.5 bg-[#0d1117] hover:bg-white/[0.05] border border-white/[0.06] rounded-xl text-gray-500 hover:text-white transition-all">
+                        className="p-2.5 t-card hover:hover:bg-[var(--surface-hover)] t-border border rounded-xl t-text-m hover:t-text transition-colors">
                         <RefreshCw size={15} />
                     </button>
                 </div>
             </div>
 
-            {/* Canvas */}
-            <div className="flex-1 relative bg-[#080c10] border border-white/[0.06] rounded-2xl overflow-hidden min-h-0" ref={containerRef}>
+            {/* Legend bar */}
+            <div className="flex flex-col items-center justify-center gap-2">
+                <div className="flex items-center gap-3">
+                    <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">-1.0</span>
+                    <div className="w-32 h-2 rounded-full" style={{ background: `linear-gradient(to right, #3b82f6, ${isDarkGlobal ? '#1e293b' : '#f1f5f9'}, #C8102E)` }} />
+                    <span className="text-[9px] font-bold text-awb-red uppercase tracking-widest">+1.0</span>
+                </div>
+                <div className="flex gap-4">
+                    <span className="text-[9px] t-text-m font-bold uppercase tracking-widest transition-colors">{rowAssets.length} rows</span>
+                    <span className="text-[9px] t-text-m font-bold uppercase tracking-widest transition-colors">{colAssets.length} cols</span>
+                </div>
+            </div>
+
+            {/* Matrix canvas — full width, scrollable via page */}
+            <div className="relative t-card t-border border rounded-2xl overflow-x-auto custom-scrollbar transition-colors">
                 {loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex items-center justify-center py-32">
                         <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 border-4 border-[#C8102E] border-t-transparent rounded-full animate-spin" />
-                            <span className="mt-3 text-[10px] font-black text-gray-600 uppercase tracking-widest">Loading matrix...</span>
+                            <div className="w-8 h-8 border-4 border-awb-red/20 border-t-awb-red rounded-full animate-spin" />
+                            <span className="mt-3 text-[10px] font-bold t-text uppercase tracking-widest transition-colors">Loading matrix...</span>
                         </div>
                     </div>
                 ) : (
                     <canvas
                         ref={canvasRef}
-                        style={{ width: dimensions.width, height: dimensions.height, cursor: 'crosshair' }}
+                        style={{
+                            width: canvasDims.width,
+                            height: canvasDims.height,
+                            cursor: 'crosshair',
+                            display: 'block',
+                        }}
                         onMouseMove={handleMouseMove}
                         onMouseLeave={() => setTooltip(null)}
                     />
                 )}
-
-                {/* Legend */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/50 backdrop-blur px-4 py-2 rounded-xl border border-white/[0.06]">
-                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">-1.0</span>
-                    <div className="w-32 h-2 rounded-full" style={{ background: 'linear-gradient(to right, #3b82f6, #1e293b, #C8102E)' }} />
-                    <span className="text-[9px] font-black text-[#C8102E] uppercase tracking-widest">+1.0</span>
-                    <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest ml-2">{filteredAssets.length} assets</span>
-                </div>
             </div>
 
             {/* Tooltip */}
             {tooltip && (
                 <div className="fixed z-50 pointer-events-none"
                     style={{ left: tooltip.x + 14, top: tooltip.y - 10 }}>
-                    <div className="bg-[#0d1117] border border-white/10 rounded-xl px-4 py-3 shadow-2xl min-w-[160px]">
-                        <div className="text-[10px] font-black text-white mb-1">{tooltip.row} × {tooltip.col}</div>
-                        <div className={`text-xl font-black font-mono ${tooltip.val > 0 ? 'text-[#C8102E]' : 'text-blue-400'}`}>
+                    <div className="t-elevated t-border border rounded-xl px-4 py-3 shadow-lg min-w-[160px] transition-colors">
+                        <div className="text-[10px] font-bold t-text mb-1 transition-colors">{tooltip.row} × {tooltip.col}</div>
+                        <div className={`text-xl font-bold font-mono ${tooltip.val > 0 ? 'text-awb-red' : 'text-blue-500'}`}>
                             {tooltip.val != null ? tooltip.val.toFixed(4) : '—'}
                         </div>
-                        <div className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mt-1">Pearson Coefficient</div>
+                        <div className="text-[9px] t-text-m font-bold uppercase tracking-widest mt-1 transition-colors">Pearson Coefficient</div>
                     </div>
                 </div>
             )}

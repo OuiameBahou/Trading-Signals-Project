@@ -9,7 +9,7 @@ const StatCard = ({ label, value, sub, icon: Icon, colorClass, tooltip, onClick 
         <motion.div
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            className={`card relative p-6 flex flex-col justify-between transition-all group ${onClick ? 'cursor-pointer hover:border-awb-red/30' : ''}`}
+            className={`t-card t-border border relative p-6 flex flex-col justify-between transition-all group ${onClick ? 'cursor-pointer hover:border-awb-red/30' : ''}`}
             onClick={onClick}
         >
             <div className="flex justify-between items-start mb-4">
@@ -21,7 +21,7 @@ const StatCard = ({ label, value, sub, icon: Icon, colorClass, tooltip, onClick 
                     <button
                         onMouseEnter={() => setShowTooltip(true)}
                         onMouseLeave={() => setShowTooltip(false)}
-                        className="text-gray-600 dark:text-gray-600 light-mode:text-slate-400 hover:text-awb-red-light transition-colors"
+                        className="t-text-m hover:text-awb-red-light transition-colors"
                     >
                         <Info size={16} />
                     </button>
@@ -32,12 +32,12 @@ const StatCard = ({ label, value, sub, icon: Icon, colorClass, tooltip, onClick 
                                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                className="absolute right-0 top-8 w-64 p-4 bg-navy-700 dark:bg-navy-700 light-mode:bg-white border border-white/10 dark:border-white/10 light-mode:border-slate-200 rounded-xl shadow-2xl z-50 pointer-events-none transition-colors"
+                                className="absolute right-0 top-8 w-64 p-4 t-elevated t-border border rounded-xl shadow-2xl z-50 pointer-events-none transition-colors"
                             >
-                                <p className="text-[11px] text-gray-300 dark:text-gray-300 light-mode:text-slate-600 leading-relaxed font-medium transition-colors">
+                                <p className="text-[11px] t-text leading-relaxed font-medium transition-colors">
                                     {tooltip}
                                 </p>
-                                <div className="absolute right-3 -top-1.5 w-3 h-3 bg-navy-700 dark:bg-navy-700 light-mode:bg-white border-l border-t border-white/10 dark:border-white/10 light-mode:border-slate-200 rotate-45 transition-colors"></div>
+                                <div className="absolute right-3 -top-1.5 w-3 h-3 t-elevated t-border-s border-l border-t rotate-45 transition-colors"></div>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -45,13 +45,13 @@ const StatCard = ({ label, value, sub, icon: Icon, colorClass, tooltip, onClick 
             </div>
 
             <div>
-                <div className="text-[11px] font-bold text-gray-500 dark:text-gray-500 light-mode:text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 transition-colors">
+                <div className="text-[11px] font-bold t-text-m uppercase tracking-widest mb-1 flex items-center gap-1.5 transition-colors">
                     {label}
                 </div>
                 <div className={`text-2xl font-black tracking-tight ${colorClass.text} transition-colors`}>
                     {value || '—'}
                 </div>
-                <div className="text-[10px] text-gray-600 dark:text-gray-600 light-mode:text-slate-400 font-medium mt-1 uppercase tracking-tight transition-colors">
+                <div className="text-[10px] t-text-s font-medium mt-1 uppercase tracking-tight transition-colors">
                     {sub}
                 </div>
             </div>
