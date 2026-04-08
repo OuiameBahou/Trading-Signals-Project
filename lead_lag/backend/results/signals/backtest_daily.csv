@@ -1,0 +1,8 @@
+Leader,Follower,Cat_Leader,Cat_Follower,N_Methods,Robustesse,Score_Final,Lead_Days,Optimal_Lag,Direction,Frequency,Win_Rate,Sharpe_Ratio,Annual_Return,Max_Drawdown,N_Trades,Winning_Trades,Losing_Trades,Profit_Factor,Mean_Trade_Ret,Trades_Per_Year,Avg_Hold_Days,TP_Exits,SL_Exits,Leader_Rev_Exits,MaxHold_Exits,Avg_Position_Size,Corr_Filtered,Win_Rate_Str,Family
+SP500,NASDAQ100,Indices,Indices,3,Forte,0.8711,1,1,1,Daily,0.68,1.5242,0.132362,-0.094764,25,17,8,3.1799,0.016262,8.14,5.0,14,6,1,4,1.249,0,68.0%,Indices_to_Indices
+RUSSELL2000,NASDAQ100,Indices,Indices,3,Forte,0.837,1,1,1,Daily,0.5556,0.9616,0.11762,-0.15013,45,25,20,1.7206,0.008028,14.65,4.6,21,18,1,5,1.318,4,55.6%,Indices_to_Indices
+DAX,FTSE100,Indices,Indices,3,Forte,0.8294,3,3,1,Daily,0.4615,0.6675,0.045265,-0.059231,13,6,7,2.5415,0.010694,4.23,5.5,6,3,1,3,1.0,1,46.2%,Indices_to_Indices
+VIX,RUSSELL2000,Indices,Indices,3,Forte,0.8003,3,3,-1,Daily,0.4848,0.3757,0.036333,-0.126502,33,16,17,1.2854,0.003382,10.74,4.6,13,14,2,3,1.0,0,48.5%,Indices_to_Indices
+DAX,CAC40,Indices,Indices,3,Forte,0.8765,1,1,1,Daily,0.5,0.2451,0.012756,-0.059749,14,7,7,1.305,0.002798,4.56,5.6,5,4,1,4,1.0,0,50.0%,Indices_to_Indices
+EURGBP,GBPJPY,FX G10,FX G10,3,Forte,0.794,2,2,-1,Daily,0.3333,-0.053,-0.001379,-0.036788,6,2,4,0.9162,-0.000706,1.95,4.3,2,3,1,0,1.136,4,33.3%,FX_to_FX
+EURUSD,USDSEK,FX G10,FX G10,3,Forte,0.8325,1,1,-1,Daily,0.3793,-0.2846,-0.017849,-0.111896,29,11,18,0.8121,-0.00189,9.44,3.3,10,17,2,0,1.352,0,37.9%,FX_to_FX

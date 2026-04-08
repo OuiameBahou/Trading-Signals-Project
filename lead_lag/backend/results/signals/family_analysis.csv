@@ -1,0 +1,3 @@
+Family,N_Trades,Wins,Win_Rate,Binom_P,Mean_Trade,T_Stat,T_P_OneSided,Total_Return,Significant
+Indices_to_Indices,130,71,0.5462,0.1673,0.008135,3.058,0.0014,1.0576,
+FX_to_FX,35,13,0.3714,0.9552,-0.001687,-0.503,0.6908,-0.059057,

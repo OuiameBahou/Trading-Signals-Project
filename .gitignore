@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.venv
+env/
+venv/
+.claude/
+*.log
+.DS_Store
+# Optionally ignore data or results if they are too large
+# data/
+# results/
