@@ -31,7 +31,7 @@ logs/
 Thumbs.db
 
 # MongoDB data
-data/
+# data/ — included in repo (required for NLP pipeline)
 
 # Reports, assets, research (not part of the backend code)
 report/

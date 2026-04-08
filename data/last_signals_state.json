@@ -1,0 +1,32 @@
+{
+    "AAPL": {
+        "signal": "Sentiment Neutre",
+        "net_sentiment": 0.0,
+        "updated_at": "2026-03-25T19:18:11.841285+00:00"
+    },
+    "TSLA": {
+        "signal": "Sentiment Neutre",
+        "net_sentiment": -0.1429,
+        "updated_at": "2026-03-25T19:18:11.841285+00:00"
+    },
+    "GOLD": {
+        "signal": "Sentiment N\u00e9gatif Fort",
+        "net_sentiment": -0.5,
+        "updated_at": "2026-03-25T19:18:11.842270+00:00"
+    },
+    "WTI": {
+        "signal": "Sentiment N\u00e9gatif Fort",
+        "net_sentiment": -0.6191,
+        "updated_at": "2026-03-25T19:18:11.843256+00:00"
+    },
+    "EURUSD": {
+        "signal": "Sentiment Positif Fort",
+        "net_sentiment": 1.0,
+        "updated_at": "2026-03-25T19:18:11.844257+00:00"
+    },
+    "BTCUSD": {
+        "signal": "Neutre",
+        "net_sentiment": 0.0,
+        "updated_at": "2026-03-17T12:26:55.212615+00:00"
+    }
+}
