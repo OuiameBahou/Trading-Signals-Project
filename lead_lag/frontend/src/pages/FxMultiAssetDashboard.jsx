@@ -19,13 +19,24 @@ const COLORS = ['#FFB81C','#10b981','#3b82f6','#8b5cf6','#ef4444','#06b6d4','#f5
   '#f87171','#60a5fa','#fbbf24'];
 
 const OPTIMAL_INFO = {
-  'EUR': { theta: 0.1, eps: 0.0165 },
-  'AUD': { theta: 0.1, eps: 0.00336 },
-  'GBP': { theta: 0.2, eps: 0.0005 },
-  'NZD': { theta: 0.1, eps: 0.0027 },
-  'CAD': { theta: 0.4, eps: 0.0168 },
-  'CHF': { theta: 0.2, eps: 0.005 },
-  'JPY': { theta: 0.1, eps: 1.967 },
+  FX: {
+    'EUR': { theta: 0.1, eps: 0.0165 },
+    'AUD': { theta: 0.1, eps: 0.00336 },
+    'GBP': { theta: 0.2, eps: 0.0005 },
+    'NZD': { theta: 0.1, eps: 0.0027 },
+    'CAD': { theta: 0.4, eps: 0.0168 },
+    'CHF': { theta: 0.2, eps: 0.005 },
+    'JPY': { theta: 0.1, eps: 1.967 },
+  },
+  Indices: {
+    'CAC40':       { theta: 0.1, eps: 0.01 },
+    'DAX':         { theta: 0.1, eps: 3.165263 },
+    'EUROSTOXX50': { theta: 0.1, eps: 6.320526 },
+    'FTSE100':     { theta: 0.1, eps: 3.165263 },
+    'NASDAQ100':   { theta: 0.1, eps: 0.01 },
+    'NIKKEI225':   { theta: 0.2, eps: 0.01 },
+    'SP500':       { theta: 0.1, eps: 12.0 },
+  },
 };
 
 /* ── Tooltip — reads ONLY from Recharts payload (= actual rendered Lines) ── */
@@ -443,7 +454,7 @@ const FxMultiAssetDashboard = () => {
                   <button onClick={() => setUseOptimal(true)}
                     className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all
                                 ${useOptimal ? 'bg-[#FFB81C] text-black shadow-lg shadow-[#FFB81C]/20' : 't-text-m hover:t-text'}`}>
-                    Per-Pair Best
+                    Per-Asset Best
                   </button>
                   <button onClick={() => setUseOptimal(false)}
                     className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all
@@ -454,20 +465,30 @@ const FxMultiAssetDashboard = () => {
               </div>
 
               {useOptimal ? (
-                /* Show the per-pair optimal params as info */
-                <div className="flex items-start gap-2 px-3 py-2 rounded-xl t-elevated border t-border-s">
-                  <Info size={12} className="text-[#FFB81C] shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-[8px] font-black t-text-m uppercase tracking-widest mb-1">Each pair uses its own tuned θ/ε</div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                      {Object.entries(OPTIMAL_INFO).map(([pair, { theta: t, eps: e }]) => (
-                        <span key={pair} className="text-[8px] font-mono t-text-m">
-                          <span className="font-black t-text">{pair}</span> θ={t} ε={e}
-                        </span>
-                      ))}
+                /* Show the per-asset optimal params — scoped to which categories are actually selected */
+                (() => {
+                  const selectedCats = new Set(selectedList.map(p => p.category));
+                  const catsToShow = ['FX', 'Indices'].filter(c => selectedCats.has(c));
+                  if (!catsToShow.length) return null;
+                  return (
+                    <div className="flex items-start gap-2 px-3 py-2 rounded-xl t-elevated border t-border-s">
+                      <Info size={12} className="text-[#FFB81C] shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <div className="text-[8px] font-black t-text-m uppercase tracking-widest">Each asset uses its own tuned θ/ε</div>
+                        {catsToShow.map(cat => (
+                          <div key={cat} className="flex flex-wrap gap-x-3 gap-y-0.5">
+                            <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cat === 'Indices' ? '#10b981' : '#FFB81C' }}>{cat === 'Indices' ? 'Indices' : 'FX'}</span>
+                            {Object.entries(OPTIMAL_INFO[cat]).map(([asset, { theta: t, eps: e }]) => (
+                              <span key={asset} className="text-[8px] font-mono t-text-m">
+                                <span className="font-black t-text">{asset}</span> θ={t} ε={e}
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()
               ) : (
                 /* Custom fields */
                 <>
