@@ -62,7 +62,8 @@ const MiniChart = ({ data, color }) => {
   const gradId = `grad_${color.replace('#', '')}`;
   return (
     <ResponsiveContainer width="100%" height={80}>
-      <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}>
+      <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}
+        style={{ background: 'transparent' }}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={color} stopOpacity={0.2} />
@@ -70,7 +71,8 @@ const MiniChart = ({ data, color }) => {
           </linearGradient>
         </defs>
         <Area type="monotone" dataKey="value" stroke={color} strokeWidth={1.5}
-          fill={`url(#${gradId})`} dot={false} />
+          fill={`url(#${gradId})`} dot={false} isAnimationActive={false}
+          strokeLinejoin="round" strokeLinecap="round" />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -208,6 +210,7 @@ const AssetStrategyChart = ({ asset, colorMap, activeStrategy }) => {
 const FxMultiAssetDashboard = () => {
   const [allPairs, setAllPairs] = useState([]);
   const [selectedPairs, setSelectedPairs] = useState(new Set());
+  const [presetMode, setPresetMode] = useState('ALL_FX');
   const [tab, setTab] = useState('regime');
 
   // Regime state
@@ -232,24 +235,36 @@ const FxMultiAssetDashboard = () => {
     axios.get('/api/fx/data-pairs').then(r => {
       const data = r.data || [];
       setAllPairs(data);
-      setSelectedPairs(new Set(data.map(p => p.name)));
+      // Default: all FX pairs selected
+      setSelectedPairs(new Set(data.filter(p => p.category === 'FX').map(p => p.name)));
+      setPresetMode('ALL_FX');
     }).catch(() => {});
   }, []);
 
+  const handlePreset = (mode) => {
+    setPresetMode(mode);
+    if (mode === 'ALL_FX') {
+      setSelectedPairs(new Set(allPairs.filter(p => p.category === 'FX').map(p => p.name)));
+    } else if (mode === 'ALL_INDICES') {
+      setSelectedPairs(new Set(allPairs.filter(p => p.category === 'Indices').map(p => p.name)));
+    }
+    // CUSTOM: user picks individually — don't reset selectedPairs
+  };
+
   const togglePair = (name) => {
+    setPresetMode('CUSTOM');
     setSelectedPairs(prev => {
       const next = new Set(prev);
       next.has(name) ? next.delete(name) : next.add(name);
       return next;
     });
   };
-  const selectAll = () => setSelectedPairs(new Set(allPairs.map(p => p.name)));
-  const selectNone = () => setSelectedPairs(new Set());
+
   const selectedList = allPairs.filter(p => selectedPairs.has(p.name));
 
   /* ── Regime run ──────────────────────────────────────────────────── */
   const handleRegimeRun = async () => {
-    if (!selectedList.length) { setError('Select at least one pair.'); return; }
+    if (!selectedList.length) { setError('Select at least one asset.'); return; }
     setRunning(true); setError(null); setAssets([]);
     try {
       const r = await axios.post('/api/fx/backtest/multi-asset', {
@@ -270,7 +285,7 @@ const FxMultiAssetDashboard = () => {
 
   /* ── Strategy scan run ───────────────────────────────────────────── */
   const handleScanRun = async () => {
-    if (!selectedList.length) { setScanError('Select at least one pair.'); return; }
+    if (!selectedList.length) { setScanError('Select at least one asset.'); return; }
     setScanRunning(true); setScanError(null); setScanResults(null); setActiveStrategy(null);
     try {
       const r = await axios.post('/api/fx/backtest/multi-asset-scan', {
@@ -309,13 +324,13 @@ const FxMultiAssetDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">FX Technical Engine</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">Indicators Engine</div>
         <h1 className="text-2xl font-black t-text tracking-tight flex items-center gap-3">
           <BarChart3 className="text-[#FFB81C]" size={22} />
           Multi-Asset Dashboard
         </h1>
         <p className="text-[10px] t-text-m mt-1 uppercase tracking-widest font-bold">
-          {tab === 'regime' ? 'Regime strategy' : 'Strategy scan'} · {selectedPairs.size} pairs selected
+          {tab === 'regime' ? 'Regime strategy' : 'Strategy scan'} · {selectedPairs.size} assets selected
         </p>
       </div>
 
@@ -335,26 +350,67 @@ const FxMultiAssetDashboard = () => {
 
       {/* Config */}
       <div className="t-card rounded-xl border t-border-s p-5 space-y-4">
-        {/* Pair selection */}
+        {/* Asset selection */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[9px] font-black t-text-m uppercase tracking-[0.2em]">Select Pairs</div>
-            <div className="flex gap-2">
-              <button onClick={selectAll} className="text-[9px] font-black text-[#FFB81C] hover:text-[#FFB81C]/80 transition-colors uppercase tracking-wider">All</button>
-              <span className="text-[9px] t-text-m">·</span>
-              <button onClick={selectNone} className="text-[9px] font-black t-text-m hover:t-text transition-colors uppercase tracking-wider">None</button>
-            </div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[9px] font-black t-text-m uppercase tracking-[0.2em]">Select Assets</div>
+            <span className="text-[9px] t-text-m font-bold">{selectedPairs.size} selected</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {allPairs.map(p => {
-              const isSelected = selectedPairs.has(p.name);
+
+          {/* Preset buttons */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[9px] font-black uppercase tracking-widest t-text-m">Quick:</span>
+            {[
+              { mode: 'ALL_FX',      label: `All FX (${allPairs.filter(p => p.category === 'FX').length})` },
+              { mode: 'ALL_INDICES', label: `All Indices (${allPairs.filter(p => p.category === 'Indices').length})` },
+              { mode: 'CUSTOM',      label: 'Custom' },
+            ].map(({ mode, label }) => (
+              <button key={mode} onClick={() => handlePreset(mode)}
+                className={`px-3 py-1.5 rounded text-[9px] font-black uppercase tracking-widest transition-all
+                  ${presetMode === mode
+                    ? 'bg-[#FFB81C] text-black shadow-lg shadow-[#FFB81C]/20'
+                    : 't-elevated border t-border-s t-text-m hover:t-text'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Category-grouped toggles */}
+          <div className="flex gap-8 flex-wrap">
+            {['FX', 'Indices'].map(cat => {
+              const catPairs = allPairs.filter(p => p.category === cat);
+              if (!catPairs.length) return null;
+              const isIdx = cat === 'Indices';
+              const accentColor = isIdx ? '#10b981' : '#FFB81C';
               return (
-                <button key={p.name} onClick={() => togglePair(p.name)}
-                  className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border transition-all text-[11px] font-black font-mono active:scale-[0.97]
-                              ${isSelected ? 'bg-[#FFB81C]/10 border-[#FFB81C]/40 text-[#FFB81C] shadow-sm' : 't-border-s t-text-m hover:t-text'}`}>
-                  {isSelected ? <CheckSquare size={14} /> : <Square size={14} />}
-                  {fmtPair(p.name)}
-                </button>
+                <div key={cat}>
+                  <div
+                    className="text-[9px] font-black uppercase tracking-widest mb-2"
+                    style={{ color: accentColor }}
+                  >
+                    {isIdx ? 'Equity Indices' : 'FX Pairs'}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {catPairs.map(p => {
+                      const isSelected = selectedPairs.has(p.name);
+                      return (
+                        <button
+                          key={p.name}
+                          onClick={() => togglePair(p.name)}
+                          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border transition-all text-[11px] font-black font-mono active:scale-[0.97]
+                            ${isSelected
+                              ? isIdx
+                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-sm'
+                                : 'bg-[#FFB81C]/10 border-[#FFB81C]/40 text-[#FFB81C] shadow-sm'
+                              : 't-border-s t-text-m hover:t-text'}`}
+                        >
+                          {isSelected ? <CheckSquare size={14} /> : <Square size={14} />}
+                          {fmtPair(p.name)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -588,7 +644,7 @@ const FxMultiAssetDashboard = () => {
               ? <BarChart3 size={40} className="mx-auto mb-3 opacity-20" />
               : <Scan size={40} className="mx-auto mb-3 opacity-20" />}
             <p className="text-[11px] font-black uppercase tracking-widest opacity-40">
-              {tab === 'regime' ? 'Select pairs and run regime backtest' : 'Select pairs and run strategy scan'}
+              {tab === 'regime' ? 'Select assets and run regime backtest' : 'Select assets and run strategy scan'}
             </p>
           </div>
         </div>

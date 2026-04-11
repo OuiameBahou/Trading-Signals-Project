@@ -162,7 +162,7 @@ const FxRegimeOptimizer = () => {
     setConfirmedInds(prev => prev.includes(ind) ? prev.filter(x => x !== ind) : [...prev, ind]);
 
   const handleRun = async () => {
-    if (!selectedPair) { setError('Select a pair first.'); return; }
+    if (!selectedPair) { setError('Select an asset first.'); return; }
     setRunning(true); setError(null); setGridData(null);
     try {
       const r = await axios.post('/api/fx/backtest/regime-optimize', {
@@ -186,13 +186,13 @@ const FxRegimeOptimizer = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">FX Technical Engine</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">Indicators Engine</div>
         <h1 className="text-2xl font-black t-text tracking-tight flex items-center gap-3">
           <Compass className="text-[#FFB81C]" size={22} />
           Regime Optimizer
         </h1>
         <p className="text-[10px] t-text-m mt-1 uppercase tracking-widest font-bold">
-          2-D grid sweep · θ × ε · {totalCells} cells · {selectedPair ? selectedPair.name.replace(/_/g, '/') : 'No pair'}
+          2-D grid sweep · θ × ε · {totalCells} cells · {selectedPair ? selectedPair.name.replace(/_/g, '/') : 'No asset'}
         </p>
       </div>
 

@@ -836,8 +836,9 @@ def plot_pairs(folderpath, figsize=(1400, 900), rows=4, cols=2):
     fig.show()
 
 
-# Hardcoded optimal parameters per FX pair (from plot_pairs)
+# Hardcoded optimal parameters per asset (FX pairs and Equity Indices)
 OPTIMAL_PARAMS = {
+    # FX pairs — short prefix keys for substring matching
     'EUR': {'theta': 0.1,  'eps': 0.0165},
     'AUD': {'theta': 0.1,  'eps': 0.00336},
     'GBP': {'theta': 0.2,  'eps': 0.0005},
@@ -845,4 +846,12 @@ OPTIMAL_PARAMS = {
     'CAD': {'theta': 0.4,  'eps': 0.0168},
     'CHF': {'theta': 0.2,  'eps': 0.005},
     'JPY': {'theta': 0.1,  'eps': 1.967},
+    # Equity indices — full exact keys (matched first in _get_optimal_params)
+    'SP500':       {'theta': 0.10, 'eps': 12.000},
+    'NASDAQ100':   {'theta': 0.10, 'eps': 0.010},
+    'DAX':         {'theta': 0.10, 'eps': 3.165},
+    'FTSE100':     {'theta': 0.10, 'eps': 3.165},
+    'CAC40':       {'theta': 0.10, 'eps': 0.010},
+    'NIKKEI225':   {'theta': 0.20, 'eps': 0.010},
+    'EUROSTOXX50': {'theta': 0.10, 'eps': 6.321},
 }

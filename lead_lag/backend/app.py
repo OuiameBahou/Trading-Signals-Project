@@ -16,6 +16,8 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 STATS_DIR  = os.path.join(BASE_DIR, 'results', 'stats')
 STATS_DAILY = os.path.join(STATS_DIR, 'daily')
 DATA_DIR   = os.path.join(BASE_DIR, 'data', 'clean')
+FX_DATA_DIR      = os.path.abspath(os.path.join(BASE_DIR, '..', '..', 'fx', 'backend', 'data', 'fx'))
+INDICES_DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', '..', 'fx', 'backend', 'data', 'indices'))
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -362,78 +364,106 @@ def api_trading_signals_freq(frequency):
 # ---------------------------------------------------------------------------
 @app.route('/api/fx/dashboard')
 def api_fx_dashboard():
-    fx_dir = os.path.join(BASE_DIR, 'data', 'fx')
-    if not os.path.exists(fx_dir):
-        return jsonify([])
+    search_paths = [
+        (FX_DATA_DIR,      'FX'),
+        (INDICES_DATA_DIR, 'Indices'),
+    ]
+
+    seen = set()
+    all_files = []
+    for d, cat in search_paths:
+        if not os.path.isdir(d):
+            continue
+        for f in sorted(os.listdir(d)):
+            if f.startswith('~') or f.startswith('.'):
+                continue
+            if not (f.endswith('.csv') or f.endswith('.xlsx')):
+                continue
+            pair_name = os.path.splitext(f)[0]
+            if pair_name in seen:
+                continue
+            seen.add(pair_name)
+            all_files.append((f, os.path.join(d, f), cat))
 
     dashboard_data = []
-    for f in os.listdir(fx_dir):
-        if f.endswith('.csv') or f.endswith('.xlsx'):
-            pair_name = os.path.splitext(f)[0]
-            file_path = os.path.join(fx_dir, f)
-            try:
-                if f.endswith('.csv'):
-                    df = pd.read_csv(file_path, parse_dates=True, index_col=0).tail(100)
-                else:
-                    df = pd.read_excel(file_path, parse_dates=True, index_col=0).tail(100)
+    for f, file_path, category in all_files:
+        pair_name = os.path.splitext(f)[0]
+        try:
+            if f.endswith('.xlsx'):
+                df = pd.read_excel(file_path, parse_dates=True, index_col=0).tail(100)
+                close = pd.to_numeric(df.get('PX_LAST', df.iloc[:, 0]), errors='coerce')
+                high  = pd.to_numeric(df.get('PX_HIGH', df.iloc[:, 1]), errors='coerce')
+                low   = pd.to_numeric(df.get('PX_LOW',  df.iloc[:, 2]), errors='coerce')
+            else:
+                df = pd.read_csv(file_path, parse_dates=True, index_col=0).tail(100)
+                # Investing.com layout: Price(close), Open, High, Low, Vol., Change%
+                close = pd.to_numeric(df.iloc[:, 0], errors='coerce')
+                high  = pd.to_numeric(df.iloc[:, 2], errors='coerce')
+                low   = pd.to_numeric(df.iloc[:, 3], errors='coerce')
 
-                if len(df) < 20:
-                    continue
+            close = close.ffill()
+            if len(close.dropna()) < 20:
+                continue
 
-                df['Close_numeric'] = pd.to_numeric(df.iloc[:, 3], errors='coerce') if df.shape[1] > 3 else df['Close']
-                df['SMA'] = df['Close_numeric'].rolling(window=20).mean()
-                df['SMA_Slope'] = df['SMA'].pct_change()
+            sma = close.rolling(20).mean()
+            slope = sma.pct_change()
+            tr  = pd.concat([high - low,
+                             (high - close.shift()).abs(),
+                             (low  - close.shift()).abs()], axis=1).max(axis=1)
+            atr = tr.rolling(14).mean()
 
-                high = pd.to_numeric(df.iloc[:, 1], errors='coerce') if df.shape[1] > 3 else df['High']
-                low  = pd.to_numeric(df.iloc[:, 2], errors='coerce') if df.shape[1] > 3 else df['Low']
-                tr   = pd.concat([high - low,
-                                   abs(high - df['Close_numeric'].shift()),
-                                   abs(low  - df['Close_numeric'].shift())], axis=1).max(axis=1)
-                atr  = tr.rolling(14).mean()
+            last_price = float(close.iloc[-1])
+            last_slope = float(slope.iloc[-1])
+            last_atr   = float(atr.iloc[-1])
+            slope_bps  = last_slope * 10000
+            mean_atr   = float(atr.mean())
 
-                last_price = float(df['Close_numeric'].iloc[-1])
-                last_slope = float(df['SMA_Slope'].iloc[-1])
-                last_atr   = float(atr.iloc[-1])
-                slope_bps  = last_slope * 10000
-                mean_atr   = float(atr.mean())
+            if abs(slope_bps) > 5:
+                hmm_regime = 'Bull' if slope_bps > 0 else 'Bear'
+            elif last_atr > mean_atr * 1.3:
+                hmm_regime = 'High Volatility'
+            else:
+                hmm_regime = 'Range'
 
-                if abs(slope_bps) > 5:
-                    hmm_regime = 'Bull' if slope_bps > 0 else 'Bear'
-                elif last_atr > mean_atr * 1.3:
-                    hmm_regime = 'High Volatility'
-                else:
-                    hmm_regime = 'Range'
-
-                dashboard_data.append({
-                    'pair':       pair_name,
-                    'price':      last_price,
-                    'regime':     'Trend' if abs(last_slope) > 0.0001 else 'Range',
-                    'hmm_regime': hmm_regime,
-                    'trend':      'Bullish' if last_slope > 0 else 'Bearish',
-                    'atr':        last_atr,
-                    'slope':      slope_bps,
-                    'date':       str(df.index[-1].date()) if isinstance(df.index, pd.DatetimeIndex) else 'N/A',
-                })
-            except Exception as e:
-                print(f"Error processing {pair_name} for dashboard: {e}")
+            dashboard_data.append({
+                'pair':       pair_name,
+                'price':      last_price,
+                'hmm_regime': hmm_regime,
+                'trend':      'Bullish' if last_slope > 0 else 'Bearish',
+                'atr':        last_atr,
+                'slope':      slope_bps,
+                'category':   category,
+                'date':       str(df.index[-1].date()) if isinstance(df.index, pd.DatetimeIndex) else 'N/A',
+            })
+        except Exception as e:
+            print(f"Error processing {pair_name} for dashboard: {e}")
 
     return jsonify(dashboard_data)
 
 
 @app.route('/api/fx/live_signals')
 def api_fx_live_signals():
-    fx_dir = os.path.join(BASE_DIR, 'data', 'fx')
-    if not os.path.exists(fx_dir):
-        return jsonify([])
+    scan_dirs = [FX_DATA_DIR, INDICES_DATA_DIR]
+
+    seen = set()
+    all_files = []
+    for d in scan_dirs:
+        if not os.path.isdir(d):
+            continue
+        for f in sorted(os.listdir(d)):
+            if f.startswith('~') or f.startswith('.'):
+                continue
+            if not (f.endswith('.csv') or f.endswith('.xlsx')):
+                continue
+            pair_name = os.path.splitext(f)[0]
+            if pair_name not in seen:
+                seen.add(pair_name)
+                all_files.append((f, os.path.join(d, f)))
 
     signals_data = []
 
-    for f in os.listdir(fx_dir):
-        if not (f.endswith('.csv') or f.endswith('.xlsx')):
-            continue
-
+    for f, file_path in all_files:
         pair_name = os.path.splitext(f)[0]
-        file_path = os.path.join(fx_dir, f)
 
         try:
             # Load and normalise data

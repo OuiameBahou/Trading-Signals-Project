@@ -1,0 +1,66 @@
+# ── Core ──────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+pymongo>=4.6.0
+
+# ── Database ──────────────────────────────────────────────────────────
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+
+# ── HTTP / Networking ─────────────────────────────────────────────────
+requests>=2.31.0
+
+# ── Twitter / X ───────────────────────────────────────────────────────
+tweepy>=4.14.0
+
+# ── RSS / News ────────────────────────────────────────────────────────
+feedparser>=6.0.0
+python-dateutil>=2.8.0
+
+# ── NLP ───────────────────────────────────────────────────────────────
+transformers>=4.36.0
+torch>=2.1.0
+shap>=0.44.0
+regex>=2023.10.3
+emoji>=2.8.0
+
+# ── Aggregation & LLM ─────────────────────────────────────────────────# Data processing
+pandas>=2.0.0
+numpy>=1.26.0
+openai>=1.0.0
+
+# ── UI & Dashboard ──────────────────────────────────────────────────
+fastapi>=0.109.0
+uvicorn>=0.27.0
+jinja2>=3.1.3
+yfinance>=0.2.36
+streamlit>=1.29.0
+plotly>=5.20.0
+xarray>=2024.0.0
+wordcloud>=1.9.0
+matplotlib>=3.8.0
+
+# ── Scheduling ─────────────────────────────────────────────────────────
+apscheduler>=3.10.0
+
+# ── Testing ───────────────────────────────────────────────────────────
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# ── Market Data ───────────────────────────────────────────────────────────────
+# Polygon.io REST API — institutional-grade US equities + forex feed
+# Uses requests (already listed above); no extra package needed.
+# Polygon.io S3 Flat Files — bulk historical data via S3-compatible storage
+boto3>=1.34.0
+pyarrow>=14.0.0
+
+# ── Corrélations & Backtesting ──────────────────────────────────────────────
+scipy>=1.11.0
+statsmodels>=0.14.0
+scikit-learn>=1.3.0
+hmmlearn>=0.3.0
+
+# ── Advanced Analytics (Modules 1-3) ────────────────────────────────────────
+# EGARCH-X / GARCH-X volatility models (Module 2d)
+arch>=5.4.0
+# DTW distance (Module 1 – optional; pure-numpy fallback used if absent)
+dtaidistance>=2.3.0

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, Terminal, Activity, ArrowRight, Sparkles, Cpu, Zap, Network } from 'lucide-react';
+import { Bot, Terminal, Activity, ArrowRight, Sparkles, Cpu, Zap, Network, Brain } from 'lucide-react';
 
 const PlatformGateway = ({ onNavigate }) => {
   const [bootText, setBootText] = useState('');
@@ -101,7 +101,7 @@ const PlatformGateway = ({ onNavigate }) => {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: isReady ? 1 : 0, scale: isReady ? 1 : 0.95, y: isReady ? 0 : 20 }}
           transition={{ duration: 0.6 }}
-          className="w-full grid grid-cols-1 md:grid-cols-2 gap-6"
+          className="w-full grid grid-cols-1 md:grid-cols-3 gap-6"
         >
           {/* Lead-Lag Module */}
           <button 
@@ -140,12 +140,36 @@ const PlatformGateway = ({ onNavigate }) => {
               <div className="w-12 h-12 rounded-xl bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <Cpu className="text-[#FFB81C]" size={24} />
               </div>
-              <h2 className="text-xl font-black tracking-widest uppercase mb-2 group-hover:text-[#FFB81C] transition-colors">FX Technical Engine</h2>
+              <h2 className="text-xl font-black tracking-widest uppercase mb-2 group-hover:text-[#FFB81C] transition-colors">Indicators Engine</h2>
               <p className="text-[11px] text-gray-400 font-sans tracking-wide leading-relaxed mb-6">
-                Algorithmic regime optimization, high-frequency backtest running, and G10 parameter calibration matrix.
+                Algorithmic regime optimization, high-frequency backtest running, and multi-asset parameter calibration across FX pairs and equity indices.
               </p>
               
               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#FFB81C]/80 group-hover:text-[#FFB81C] transition-colors">
+                Initialize Module <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </button>
+
+          {/* NLP Sentiment Engine Module */}
+          <button
+            disabled={!isReady}
+            onClick={() => onNavigate('nlp-command')}
+            className="group relative text-left t-card border border-emerald-500/20 hover:border-emerald-500/60 bg-[#0a0a0a] hover:bg-[#091109] rounded-2xl p-8 overflow-hidden transition-all duration-300 transform hover:-translate-y-2 hover:shadow-[0_10px_40px_-10px_rgba(16,185,129,0.2)]"
+          >
+            {/* Card Background Glow */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[50px] rounded-full group-hover:bg-emerald-500/20 transition-all duration-500" />
+
+            <div className="relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <Brain className="text-emerald-400" size={24} />
+              </div>
+              <h2 className="text-xl font-black tracking-widest uppercase mb-2 group-hover:text-emerald-400 transition-colors">NLP Sentiment Engine</h2>
+              <p className="text-[11px] text-gray-400 font-sans tracking-wide leading-relaxed mb-6">
+                FinBERT + GPT-4o news pipeline, transfer entropy signals, IC analysis, and Polymarket intelligence fusion.
+              </p>
+
+              <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-emerald-500/80 group-hover:text-emerald-400 transition-colors">
                 Initialize Module <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
               </div>
             </div>

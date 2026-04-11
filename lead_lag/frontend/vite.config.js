@@ -6,6 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      // NLP Sentiment API (FastAPI port 8002) — must come before generic /api
+      '/api/nlp/': {
+        target: 'http://127.0.0.1:8002',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nlp/, '/api'),
+      },
       // FX Backtest API (FastAPI port 8001) — specific paths take priority
       '/api/fx/backtest': {
         target: 'http://127.0.0.1:8001',

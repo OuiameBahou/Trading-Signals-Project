@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { motion } from 'framer-motion';
 import {
   BarChart2, TrendingUp, TrendingDown, RefreshCw,
-  AlertCircle, Loader2, ArrowUpRight, ArrowDownRight
+  AlertCircle, Loader2, ArrowUpRight, ArrowDownRight, Cpu
 } from 'lucide-react';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────────────── */
@@ -111,10 +112,11 @@ const KPI = ({ label, value, accent, sub }) => (
 
 /* ─── Main ───────────────────────────────────────────────────────────────────── */
 const FxCommandCenter = () => {
-  const [rows, setRows]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState(null);
-  const [filter, setFilter] = useState('ALL');
+  const [rows, setRows]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [filter, setFilter]       = useState('ALL');
+  const [category, setCategory]   = useState('ALL'); // 'ALL' | 'FX' | 'Indices'
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,7 +144,7 @@ const FxCommandCenter = () => {
 
       setRows(merged);
     } catch (e) {
-      setError('Failed to load FX market data.');
+      setError('Failed to load market data.');
     } finally {
       setLoading(false);
     }
@@ -150,23 +152,26 @@ const FxCommandCenter = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  const nBull     = rows.filter(r => r.hmm_regime === 'Bull').length;
-  const nBear     = rows.filter(r => r.hmm_regime === 'Bear').length;
-  const nRange    = rows.filter(r => r.hmm_regime === 'Range').length;
-  const nVolatile = rows.filter(r => r.hmm_regime === 'High Volatility').length;
-  const nOB       = rows.filter(r => r.rsi != null && r.rsi > 70).length;
-  const nOS       = rows.filter(r => r.rsi != null && r.rsi < 30).length;
+  const catRows = category === 'ALL' ? rows
+                : rows.filter(r => r.category === category);
 
-  const visible = filter === 'BULL'  ? rows.filter(r => r.hmm_regime === 'Bull')
-                : filter === 'BEAR'  ? rows.filter(r => r.hmm_regime === 'Bear')
-                : filter === 'RANGE' ? rows.filter(r => r.hmm_regime === 'Range' || r.hmm_regime === 'High Volatility')
-                : rows;
+  const nBull     = catRows.filter(r => r.hmm_regime === 'Bull').length;
+  const nBear     = catRows.filter(r => r.hmm_regime === 'Bear').length;
+  const nRange    = catRows.filter(r => r.hmm_regime === 'Range').length;
+  const nVolatile = catRows.filter(r => r.hmm_regime === 'High Volatility').length;
+  const nOB       = catRows.filter(r => r.rsi != null && r.rsi > 70).length;
+  const nOS       = catRows.filter(r => r.rsi != null && r.rsi < 30).length;
+
+  const visible = filter === 'BULL'  ? catRows.filter(r => r.hmm_regime === 'Bull')
+                : filter === 'BEAR'  ? catRows.filter(r => r.hmm_regime === 'Bear')
+                : filter === 'RANGE' ? catRows.filter(r => r.hmm_regime === 'Range' || r.hmm_regime === 'High Volatility')
+                : catRows;
 
   if (loading) return (
     <div className="h-full flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <Loader2 size={28} className="text-[#FFB81C] animate-spin" />
-        <div className="text-[10px] font-black t-text-m uppercase tracking-widest">Loading FX Market Data…</div>
+        <div className="text-[10px] font-black t-text-m uppercase tracking-widest">Loading Market Data…</div>
       </div>
     </div>
   );
@@ -181,24 +186,62 @@ const FxCommandCenter = () => {
     <div className="space-y-5">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black t-text tracking-tight flex items-center gap-3">
-            <BarChart2 className="text-[#FFB81C]" size={22} />
-            FX Market Monitor
-          </h1>
-          <p className="text-[10px] t-text-m mt-1 uppercase tracking-widest font-bold">
-            HMM Regime · RSI · MACD · SMA Cross · {rows.length} Pairs
-          </p>
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8 }}
+        className="flex items-center justify-between pb-8 t-border border-b transition-colors"
+      >
+        <div className="flex items-center gap-5">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#FFB81C' }}>
+            <Cpu size={22} className="text-black" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-black t-text uppercase transition-colors">
+              Asset <span style={{ color: '#FFB81C' }}>Overview</span>
+            </h2>
+            <p className="text-[11px] font-bold t-text-m uppercase tracking-[0.3em] mt-1 transition-colors">
+              FX Pairs &amp; Equity Indices · Live Regime Monitor
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Live</span>
+          </div>
           <button onClick={load}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg border t-border-s t-elevated
-                       t-text-m hover:t-text hover:border-[#FFB81C]/50 transition-all text-[10px]
-                       font-black uppercase tracking-widest">
+                       t-text-m hover:t-text transition-all text-[10px]
+                       font-black uppercase tracking-widest"
+            style={{ '--hover-border': 'rgba(255,184,28,0.5)' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,184,28,0.5)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = ''}
+          >
             <RefreshCw size={12}/> Refresh
           </button>
         </div>
+      </motion.div>
+
+      {/* ── Category filter ── */}
+      <div className="flex items-center gap-2">
+        {[
+          { key: 'ALL',     label: `All (${rows.length})` },
+          { key: 'FX',      label: `FX Pairs (${rows.filter(r => r.category === 'FX').length})` },
+          { key: 'Indices', label: `Equity Indices (${rows.filter(r => r.category === 'Indices').length})` },
+        ].map(({ key, label }) => (
+          <button key={key} onClick={() => { setCategory(key); setFilter('ALL'); }}
+            className={`px-4 py-1.5 rounded text-[9px] font-black uppercase tracking-widest border transition-all
+              ${category === key
+                ? key === 'Indices'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  : key === 'FX'
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                    : 'bg-[#FFB81C]/10 text-[#FFB81C] border-[#FFB81C]/30'
+                : 't-elevated t-text-m t-border-s hover:t-text'}`}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* ── KPI bar ── */}
@@ -214,7 +257,7 @@ const FxCommandCenter = () => {
       {/* ── Filter tabs ── */}
       <div className="flex items-center gap-2">
         {[
-          { key: 'ALL',   label: `All (${rows.length})` },
+          { key: 'ALL',   label: `All (${catRows.length})` },
           { key: 'BULL',  label: `Bull (${nBull})` },
           { key: 'BEAR',  label: `Bear (${nBear})` },
           { key: 'RANGE', label: `Range/Vol (${nRange + nVolatile})` },

@@ -63,7 +63,7 @@ const FxCombinationExplorer = () => {
   const [activeStrategy, setActiveStrategy] = useState(null);
 
   const handleRun = async () => {
-    if (!selectedPair) { setError('Select a pair first.'); return; }
+    if (!selectedPair) { setError('Select an asset first.'); return; }
     setRunning(true); setError(null); setStrategies([]); setActiveStrategy(null);
     try {
       const r = await axios.post('/api/fx/backtest/combination-test', {
@@ -116,13 +116,13 @@ const FxCombinationExplorer = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">FX Technical Engine</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">Indicators Engine</div>
         <h1 className="text-2xl font-black t-text tracking-tight flex items-center gap-3">
           <Layers className="text-[#FFB81C]" size={22} />
           Combination Explorer
         </h1>
         <p className="text-[10px] t-text-m mt-1 uppercase tracking-widest font-bold">
-          Exhaustive test · All primary+confirmer combos · {selectedPair ? selectedPair.name.replace(/_/g, '/') : 'No pair'}
+          Exhaustive test · All primary+confirmer combos · {selectedPair ? selectedPair.name.replace(/_/g, '/') : 'No asset'}
         </p>
       </div>
 
@@ -322,7 +322,7 @@ const FxCombinationExplorer = () => {
         <div className="flex items-center justify-center h-48 t-card rounded-xl border t-border-s">
           <div className="text-center t-text-m">
             <Layers size={36} className="mx-auto mb-3 opacity-20" />
-            <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Select a pair and run to explore</p>
+            <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Select an asset and run to explore</p>
           </div>
         </div>
       )}

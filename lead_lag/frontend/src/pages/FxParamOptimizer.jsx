@@ -103,7 +103,7 @@ const FxParamOptimizer = () => {
   const [expandedRow, setExpandedRow] = useState(null);
 
   const handleRun = async () => {
-    if (!selectedPair) { setError('Select a pair first.'); return; }
+    if (!selectedPair) { setError('Select an asset first.'); return; }
     setRunning(true); setError(null); setResults([]); setSensitivity([]);
     try {
       const r = await axios.post('/api/fx/backtest/optimize', {
@@ -138,13 +138,13 @@ const FxParamOptimizer = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">FX Technical Engine</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFB81C] mb-1">Indicators Engine</div>
         <h1 className="text-2xl font-black t-text tracking-tight flex items-center gap-3">
           <SlidersHorizontal className="text-[#FFB81C]" size={22} />
           Parameter Optimizer
         </h1>
         <p className="text-[10px] t-text-m mt-1 uppercase tracking-widest font-bold">
-          Grid search · Ranks by composite score · {selectedPair ? selectedPair.name.replace(/_/g, '/') : 'No pair'}
+          Grid search · Ranks by composite score · {selectedPair ? selectedPair.name.replace(/_/g, '/') : 'No asset'}
         </p>
       </div>
 
@@ -321,7 +321,7 @@ const FxParamOptimizer = () => {
         <div className="flex items-center justify-center h-48 t-card rounded-xl border t-border-s">
           <div className="text-center t-text-m">
             <SlidersHorizontal size={36} className="mx-auto mb-3 opacity-20" />
-            <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Select a pair and optimise</p>
+            <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Select an asset and optimise</p>
           </div>
         </div>
       )}

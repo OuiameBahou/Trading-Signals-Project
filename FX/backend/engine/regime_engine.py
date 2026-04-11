@@ -169,8 +169,15 @@ def run_multi_asset(
 
 
 def _get_optimal_params(name: str):
-    """Return (theta, eps) for a given pair name using hardcoded optimal params."""
+    """Return (theta, eps) for a given pair name using hardcoded optimal params.
+    Tries exact match first, then substring match (so 'EUROSTOXX50' beats 'EUR').
+    """
     name_upper = name.upper()
+    # 1. Exact match
+    if name_upper in OPTIMAL_PARAMS:
+        p = OPTIMAL_PARAMS[name_upper]
+        return p['theta'], p['eps']
+    # 2. Substring match (FX short-prefix keys like 'EUR', 'JPY')
     for key, params in OPTIMAL_PARAMS.items():
         if key in name_upper:
             return params['theta'], params['eps']

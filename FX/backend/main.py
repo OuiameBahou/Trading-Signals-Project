@@ -45,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uploads'))
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'fx'))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 INDICATOR_MAPPING = {
@@ -157,20 +157,36 @@ def get_indicators():
 
 @app.get("/api/fx/data-pairs")
 def get_data_pairs():
-    """List available FX pair data files with their server-side paths."""
-    data_dir = os.path.join(os.path.dirname(_FX_DIR), "lead_lag", "backend", "data", "fx")
-    if not os.path.isdir(data_dir):
-        return []
-    pairs = []
-    for fname in sorted(os.listdir(data_dir)):
-        ext = os.path.splitext(fname)[1].lower()
-        if ext in ('.csv', '.xlsx'):
-            pairs.append({
-                'name': os.path.splitext(fname)[0],
-                'file_path': os.path.join(data_dir, fname),
-                'file_type': 'csv' if ext == '.csv' else 'xlsx',
-            })
-    return pairs
+    """List available data files — both FX pairs and equity indices."""
+    results = []
+
+    # FX pairs
+    fx_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'fx'))
+    if os.path.isdir(fx_dir):
+        for fname in sorted(os.listdir(fx_dir)):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in ('.csv', '.xlsx'):
+                results.append({
+                    'name': os.path.splitext(fname)[0],
+                    'file_path': os.path.join(fx_dir, fname),
+                    'file_type': 'csv' if ext == '.csv' else 'xlsx',
+                    'category': 'FX',
+                })
+
+    # Equity indices
+    idx_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'indices'))
+    if os.path.isdir(idx_dir):
+        for fname in sorted(os.listdir(idx_dir)):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in ('.csv', '.xlsx'):
+                results.append({
+                    'name': os.path.splitext(fname)[0],
+                    'file_path': os.path.join(idx_dir, fname),
+                    'file_type': 'csv' if ext == '.csv' else 'xlsx',
+                    'category': 'Indices',
+                })
+
+    return results
 
 
 @app.post("/api/fx/upload")

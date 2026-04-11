@@ -14,6 +14,9 @@ import FxCombinationExplorer from './pages/FxCombinationExplorer';
 import FxParamOptimizer from './pages/FxParamOptimizer';
 import FxRegimeOptimizer from './pages/FxRegimeOptimizer';
 import FxMultiAssetDashboard from './pages/FxMultiAssetDashboard';
+import NlpCommandCenter from './pages/NlpCommandCenter';
+import NlpTickerAnalysis from './pages/NlpTickerAnalysis';
+import NlpPolymarket from './pages/NlpPolymarket';
 import PlatformGateway from './pages/PlatformGateway';
 
 const App = () => {
@@ -51,6 +54,9 @@ const App = () => {
       case 'fx-param-opt': return <FxParamOptimizer />;
       case 'fx-regime-opt': return <FxRegimeOptimizer />;
       case 'fx-multi-asset': return <FxMultiAssetDashboard />;
+      case 'nlp-command': return <NlpCommandCenter />;
+      case 'nlp-ticker': return <NlpTickerAnalysis />;
+      case 'nlp-polymarket': return <NlpPolymarket />;
       default:
         return (
           <div className="flex items-center justify-center h-full text-gray-500">

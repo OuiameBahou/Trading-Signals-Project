@@ -152,6 +152,16 @@ body.light-mode {
   background: var(--scrollbar-hover);
 }
 
+/* ─── Recharts overrides ──────────────────────────────────────────── */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-wrapper svg {
+  background: transparent !important;
+}
+.recharts-wrapper svg {
+  color: transparent;
+}
+
 /* ─── Border gradient ─────────────────────────────────────────────── */
 .border-gradient {
   background: linear-gradient(var(--surface-card), var(--surface-card)) padding-box,
