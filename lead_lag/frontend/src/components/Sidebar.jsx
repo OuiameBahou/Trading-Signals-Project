@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Share2, Thermometer, Zap, Globe, Info, Activity, ChevronDown, Play, Layers, SlidersHorizontal, Compass, BarChart3, Newspaper, Target, Brain } from 'lucide-react';
+import { LayoutDashboard, Share2, Thermometer, Zap, Globe, Info, Activity, ChevronDown, Play, Layers, SlidersHorizontal, Compass, BarChart3, Newspaper, Target, Brain, PieChart, Sparkles } from 'lucide-react';
 
 const Sidebar = ({ activePage, onNavigate }) => {
     // Determine which accordion should be open by default based on the active page
@@ -32,8 +32,10 @@ const Sidebar = ({ activePage, onNavigate }) => {
 
     const nlpItems = [
         { id: 'nlp-command',    label: 'Sentiment Hub',       icon: Brain             },
+        { id: 'nlp-sentiment',  label: 'Sentiment by Ticker', icon: PieChart          },
         { id: 'nlp-ticker',     label: 'Ticker Deep Dive',    icon: Newspaper         },
         { id: 'nlp-polymarket', label: 'Polymarket Intel',    icon: Target            },
+        { id: 'nlp-correlation',label: 'Sentiment Correl.',   icon: Sparkles          },
     ];
 
     return (

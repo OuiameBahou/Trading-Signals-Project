@@ -117,8 +117,8 @@ const NlpPolymarket = () => {
     setError(null);
     try {
       const [sigRes, mktRes] = await Promise.all([
-        axios.get('/api/nlp/api/polymarket/signals').catch(() => ({ data: [] })),
-        axios.get('/api/nlp/api/polymarket/markets').catch(() => ({ data: [] })),
+        axios.get('/api/nlp/polymarket/signals').catch(() => ({ data: [] })),
+        axios.get('/api/nlp/polymarket/markets').catch(() => ({ data: [] })),
       ]);
       const normList = (d) => Array.isArray(d) ? d : d?.signals ?? d?.markets ?? d?.items ?? d?.results ?? [];
       setSignals(normList(sigRes.data));

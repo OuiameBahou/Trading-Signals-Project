@@ -41,7 +41,7 @@ def _align_series(sentiment_ts, returns_ts):
 
     End dates are intentionally left unmodified — the two series may stop at
     different dates (price often lags sentiment by a day or two). Callers that
-    need a strict intersection (TE stats, DTW) must apply their own dropna();
+    need a strict intersection (TE stats) must apply their own dropna();
     callers that build chart series should use the asymmetric ranges as-is so
     that the sentiment line correctly extends past the price line on the chart.
     """
@@ -143,8 +143,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        "http://127.0.0.1:5173",
         os.getenv("FRONTEND_URL", "http://localhost:3000"),
     ],
     allow_credentials=True,
@@ -487,8 +489,8 @@ async def api_te_analysis(ticker: str):
     Transfer Entropy analysis — directed information flow from sentiment to price.
 
     Returns TE lag profile (both S→R and R→S), optimal lag, significance,
-    directionality score, DTW similarity, stationarity pre-tests, and the
-    aligned sentiment / returns time series for charting.
+    directionality score, and the aligned sentiment / returns time series
+    for charting.
     """
     try:
         ticker = urllib.parse.unquote(ticker).upper()
@@ -499,10 +501,6 @@ async def api_te_analysis(ticker: str):
             build_chart_series,
         )
         from analytics.transfer_entropy import run_transfer_entropy_analysis
-        from analytics.correlation_engine import (
-            compute_dtw_correlation,
-            run_stationarity_tests,
-        )
 
         # ── Sentiment series ──────────────────────────────────────────
         n_real_days = 0
@@ -552,18 +550,6 @@ async def api_te_analysis(ticker: str):
         # ── Transfer Entropy (primary analysis) ───────────────────────
         te_result = run_transfer_entropy_analysis(sentiment_ts, returns_ts)
 
-        # ── Supporting: DTW + stationarity ────────────────────────────
-        dtw_result: dict = {}
-        stationarity_result: dict = {}
-        try:
-            aligned = pd.concat(
-                [sentiment_ts.rename("s"), returns_ts.rename("r")], axis=1
-            ).dropna()
-            dtw_result         = compute_dtw_correlation(aligned["s"], aligned["r"])
-            stationarity_result = run_stationarity_tests(aligned["s"], aligned["r"])
-        except Exception as _e:
-            logger.warning("Supporting analyses (DTW/stationarity) skipped: %s", _e)
-
         # ── Chart series ──────────────────────────────────────────────
         sentiment_chart, returns_chart = build_chart_series(sentiment_ts, returns_ts)
 
@@ -572,8 +558,6 @@ async def api_te_analysis(ticker: str):
             "n_real_days": int(n_real_days),
             "data_quality": data_quality,
             "te_analysis": te_result,
-            "dtw": dtw_result,
-            "stationarity": stationarity_result,
             "sentiment_ts": sentiment_chart,
             "returns_ts":   returns_chart,
         })
@@ -753,12 +737,13 @@ def read_polymarket(request: Request):
 @app.get("/api/polymarket/signals", response_class=JSONResponse)
 def api_polymarket_signals():
     """
-    Top macro/economics markets sorted by volume — used for the live signal bar.
-    Returns up to 8 markets.
+    Top markets across economics/crypto/politics/business sorted by volume.
+    Enriched with OpenAI GPT-4o interpretation and ticker detection.
+    Returns up to 12 markets.
     """
     try:
         from collectors.polymarket_scraper import fetch_top_macro_signals
-        markets = fetch_top_macro_signals(n=8)
+        markets = fetch_top_macro_signals(n=12, with_ai=True)
         return markets
     except Exception as exc:
         logger.error("Polymarket signals error: %s", exc)
@@ -768,35 +753,52 @@ def api_polymarket_signals():
 @app.get("/api/polymarket/markets", response_class=JSONResponse)
 def api_polymarket_markets(category: str = "all", limit: int = 60):
     """
-    Fetch Polymarket markets by category.
+    Fetch Polymarket markets by category with AI enrichment.
 
     Query params:
-        category – "all" | "economics" | "crypto" | "politics" | "business" | "climate" | "science"
+        category – "all" | "economics" | "crypto" | "politics" | "business"
         limit    – max markets to return (default 60, max 120)
     """
     try:
         limit = min(max(1, limit), 120)
         from collectors.polymarket_scraper import fetch_markets_by_category
-        markets = fetch_markets_by_category(category=category, limit=limit)
+        markets = fetch_markets_by_category(category=category, limit=limit, with_ai=True)
         return markets
     except Exception as exc:
         logger.error("Polymarket markets error: %s", exc)
         return []
 
 
+@app.get("/api/polymarket/summary", response_class=JSONResponse)
+def api_polymarket_summary():
+    """
+    Aggregate sentiment summary across all Polymarket prediction markets.
+    Returns overall bias, ticker heatmap data, and category breakdown.
+    """
+    try:
+        from collectors.polymarket_scraper import (
+            fetch_financial_markets,
+            get_sentiment_summary,
+        )
+        markets = fetch_financial_markets(limit=80, with_ai=True)
+        summary = get_sentiment_summary(markets)
+        return summary
+    except Exception as exc:
+        logger.error("Polymarket summary error: %s", exc)
+        return {"total_markets": 0, "avg_sentiment": 0, "overall_bias": "neutral"}
+
+
 @app.get("/api/advanced_analysis/{ticker:path}", response_class=JSONResponse)
 async def api_advanced_analysis(ticker: str):
     """
-    Full advanced analysis: stationarity + DTW (correlation_engine),
-    causality_engine, regime_engine.
+    Full advanced analysis: causality_engine, regime_engine.
 
     Returns engine result dicts under keys:
-      correlation_engine, causality_engine, regime_engine
+      causality_engine, regime_engine
     """
     try:
         ticker = urllib.parse.unquote(ticker).upper()
         from analytics.correlation import fetch_price_data, build_sentiment_timeseries
-        from analytics.correlation_engine import run_correlation_engine
         from analytics.causality_engine import CausalityEngine
         from analytics.regime_engine import run_regime_engine
 
@@ -818,17 +820,13 @@ async def api_advanced_analysis(ticker: str):
         # ── Align: trim to first date with real (non-zero) sentiment ──
         sentiment_ts, returns_ts = _align_series(sentiment_ts, returns_ts)
 
-        corr_result = run_correlation_engine(sentiment_ts, returns_ts)
-        d_max       = corr_result.get("stationarity", {}).get("d_max", None)
-
-        engine      = CausalityEngine(sentiment_ts, returns_ts, d_max=d_max)
+        engine      = CausalityEngine(sentiment_ts, returns_ts)
         caus_result = engine.run_all()
 
         reg_result  = run_regime_engine(sentiment_ts, returns_ts)
 
         return clean_nans({
             "ticker":             ticker,
-            "correlation_engine": corr_result,
             "causality_engine":   caus_result,
             "regime_engine":      reg_result,
         })

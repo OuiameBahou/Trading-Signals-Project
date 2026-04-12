@@ -1,12 +1,12 @@
 @echo off
 echo Starting Lead-Lag Backend (port 5000)...
-start cmd /k "cd lead_lag/backend && python app.py"
+start cmd /k "cd lead_lag/backend && py app.py"
 
 echo Starting FX Backend (port 8001)...
-start cmd /k "cd FX/backend && uvicorn main:app --port 8001 --reload"
+start cmd /k "cd FX/backend && py -m uvicorn main:app --port 8001 --reload"
 
 echo Starting NLP Sentiment Backend (port 8002)...
-start cmd /k "cd sentiment_analysis/backend && python main.py web"
+start cmd /k "cd sentiment_analysis/backend && py main.py web"
 
 echo Starting Lead-Lag Frontend (port 5173)...
 start cmd /k "cd lead_lag/frontend && npm run dev"

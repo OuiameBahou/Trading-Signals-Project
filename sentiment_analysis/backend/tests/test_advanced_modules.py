@@ -1,13 +1,7 @@
 """
-test_advanced_modules.py – Tests for Modules 1, 2, and 3.
+test_advanced_modules.py – Tests for Modules 2 and 3.
 
 Covers:
-  Module 1 – correlation_engine
-    - run_stationarity_tests: I(0) stationary series, I(1) random-walk series
-    - compute_ccf_spearman: correct peak lag on synthetic lead-lag data
-    - compute_rolling_spearman: output length and no NaN
-    - compute_dtw_correlation: similarity=1.0 on identical series
-
   Module 2 – causality_engine (CausalityEngine)
     - toda_yamamoto: chi2 stat non-null with sufficient data
     - transfer_entropy: ETE > 0 when causal signal present; ETE ≈ 0 for iid
@@ -57,115 +51,6 @@ def random_walk(n: int = 120, seed: int = 42) -> pd.Series:
 def stationary_series(n: int = 120, seed: int = 42) -> pd.Series:
     rng = np.random.default_rng(seed)
     return pd.Series(rng.standard_normal(n), index=make_idx(n))
-
-
-# ════════════════════════════════════════════════════════════════════════
-# MODULE 1 – correlation_engine
-# ════════════════════════════════════════════════════════════════════════
-
-class TestStationarityTests:
-    def test_stationary_series_returns_d0(self):
-        from analytics.correlation_engine import run_stationarity_tests
-        s = stationary_series(120)
-        r = stationary_series(120, seed=99)
-        result = run_stationarity_tests(s, r)
-        assert "d_max" in result
-        assert result["d_max"] in (0, 1)   # ADF/KPSS can disagree on short series
-        assert result["d_sentiment"] in (0, 1)
-        assert result["d_returns"]   in (0, 1)
-        print(f"  [OK] Stationarity stationary series: d_max={result['d_max']}")
-
-    def test_random_walk_tends_to_d1(self):
-        from analytics.correlation_engine import run_stationarity_tests
-        s = random_walk(150, seed=10)
-        r = stationary_series(150, seed=10)
-        result = run_stationarity_tests(s, r)
-        # Random walk should push d_max to 1 (may not always pass on every seed)
-        assert result["d_sentiment"] in (0, 1)
-        print(f"  [OK] Stationarity random walk: d_sentiment={result['d_sentiment']}")
-
-    def test_insufficient_data(self):
-        from analytics.correlation_engine import run_stationarity_tests
-        s = pd.Series([0.1, 0.2, 0.3], index=make_idx(3))
-        r = pd.Series([0.0, -0.1, 0.05], index=make_idx(3))
-        result = run_stationarity_tests(s, r)
-        assert "error" in result["sentiment"]
-        print("  [OK] Stationarity: insufficient data handled")
-
-
-class TestCCFSpearman:
-    def test_peak_lag_correct(self):
-        """Peak CCF lag should match the synthetic lead-lag offset."""
-        from analytics.correlation_engine import compute_ccf_spearman
-        s, r = synthetic_lead_lag(n=150, lag=2)
-        result = compute_ccf_spearman(s, r, max_lag=5)
-        assert "ccf" in result, f"Expected 'ccf' key, got: {result}"
-        assert result["n_obs"] > 0
-        # Peak lag should be +2 (sentiment leads returns by 2 days)
-        assert result["peak_lag"] == 2, (
-            f"Expected peak_lag=2, got {result['peak_lag']}"
-        )
-        print(f"  [OK] CCF peak_lag={result['peak_lag']}, peak_rho={result['peak_rho']}")
-
-    def test_conf_band_positive(self):
-        from analytics.correlation_engine import compute_ccf_spearman
-        s, r = synthetic_lead_lag()
-        result = compute_ccf_spearman(s, r, max_lag=5)
-        assert result["conf_band"] > 0
-        print(f"  [OK] CCF conf_band={result['conf_band']}")
-
-    def test_insufficient_data(self):
-        from analytics.correlation_engine import compute_ccf_spearman
-        s = pd.Series([0.1, 0.2], index=make_idx(2))
-        r = pd.Series([0.0, 0.1], index=make_idx(2))
-        result = compute_ccf_spearman(s, r, max_lag=5)
-        assert "error" in result
-        print("  [OK] CCF insufficient data handled")
-
-
-class TestRollingSpearman:
-    def test_output_length_and_no_nan(self):
-        from analytics.correlation_engine import compute_rolling_spearman
-        s, r = synthetic_lead_lag(n=100)
-        result = compute_rolling_spearman(s, r, window=30)
-        assert "rolling_rho" in result
-        rhos = result["rolling_rho"]
-        # Expected: 100 - 30 + 1 = 71 entries
-        assert len(rhos) == 71
-        for entry in rhos:
-            assert entry["rho"] is not None
-            assert not np.isnan(entry["rho"])
-        print(f"  [OK] Rolling Spearman: {len(rhos)} windows, mean={result['mean_rho']}")
-
-    def test_insufficient_data(self):
-        from analytics.correlation_engine import compute_rolling_spearman
-        s = pd.Series(np.random.randn(10), index=make_idx(10))
-        r = pd.Series(np.random.randn(10), index=make_idx(10))
-        result = compute_rolling_spearman(s, r, window=30)
-        assert "error" in result
-        print("  [OK] Rolling Spearman insufficient data handled")
-
-
-class TestDTW:
-    def test_identical_series_max_similarity(self):
-        from analytics.correlation_engine import compute_dtw_correlation
-        s = stationary_series(80)
-        result = compute_dtw_correlation(s, s)
-        # DTW of a series with itself should be 0 distance → similarity ≈ 1
-        assert result["dtw_distance"] == pytest.approx(0.0, abs=1e-6)
-        assert result["similarity"]   == pytest.approx(1.0, abs=1e-4)
-        print(f"  [OK] DTW identical series: dist={result['dtw_distance']}, sim={result['similarity']}")
-
-    def test_opposite_series_low_similarity(self):
-        from analytics.correlation_engine import compute_dtw_correlation
-        n   = 80
-        idx = make_idx(n)
-        s   = pd.Series(np.linspace(1, -1, n), index=idx)
-        r   = pd.Series(np.linspace(-1, 1, n), index=idx)
-        result = compute_dtw_correlation(s, r)
-        # Opposite directions → DTW distance large → similarity well below identical case
-        assert result["similarity"] < 0.99
-        print(f"  [OK] DTW opposite series: sim={result['similarity']}")
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -353,17 +238,6 @@ class TestRunRegimeEngine:
 # ════════════════════════════════════════════════════════════════════════
 
 ALL_TESTS = [
-    # Module 1
-    ("Stationarity – stationary series",   TestStationarityTests().test_stationary_series_returns_d0),
-    ("Stationarity – random walk",         TestStationarityTests().test_random_walk_tends_to_d1),
-    ("Stationarity – insufficient data",   TestStationarityTests().test_insufficient_data),
-    ("CCF – peak lag detection",           TestCCFSpearman().test_peak_lag_correct),
-    ("CCF – confidence band positive",     TestCCFSpearman().test_conf_band_positive),
-    ("CCF – insufficient data",            TestCCFSpearman().test_insufficient_data),
-    ("Rolling Spearman – length/no NaN",   TestRollingSpearman().test_output_length_and_no_nan),
-    ("Rolling Spearman – insufficient",    TestRollingSpearman().test_insufficient_data),
-    ("DTW – identical series",             TestDTW().test_identical_series_max_similarity),
-    ("DTW – opposite series",              TestDTW().test_opposite_series_low_similarity),
     # Module 2
     ("Toda-Yamamoto – chi2 nonnull",       TestTodaYamamoto().test_chi2_nonnull_sufficient_data),
     ("Toda-Yamamoto – insufficient data",  TestTodaYamamoto().test_insufficient_data_returns_error),
@@ -386,7 +260,7 @@ ALL_TESTS = [
 
 if __name__ == "__main__":
     print("=" * 65)
-    print("  [TEST] Advanced Analytics Modules 1-3")
+    print("  [TEST] Advanced Analytics Modules 2-3")
     print("=" * 65)
     passed, failed = 0, 0
     for name, fn in ALL_TESTS:

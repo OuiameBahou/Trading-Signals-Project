@@ -217,8 +217,8 @@ def get_dense_sentiment_series(
     series_end = min(df_t.index.max(), now_floor)
     full_idx = pd.date_range(start=df_t.index.min(), end=series_end, freq=freq)
     df_dense = df_t.reindex(full_idx)
-    # Forward-fill: 3 periods for 4H (= 12h), 72 units for raw hourly, 3 days for daily
-    fill_limit = 3 if freq == "4h" else (72 if freq.lower() == "h" else 3)
+    # Forward-fill: 6 periods for 4H (= 24h), 72 units for raw hourly, 3 days for daily
+    fill_limit = 6 if freq == "4h" else (72 if freq.lower() == "h" else 3)
     df_dense = df_dense.ffill(limit=fill_limit).fillna(0.0)
 
     df_dense.name = "net_sentiment"

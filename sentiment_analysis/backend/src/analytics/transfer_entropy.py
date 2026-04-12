@@ -217,11 +217,28 @@ def compute_te_lag_profile(
 
 # ── 5. Full analysis orchestrator ────────────────────────────────────────────
 
+def _adaptive_bins(n: int, fallback: int = 10) -> int:
+    """
+    Choose bin count based on sample size using the cube-root rule.
+
+    For small samples (< 500), 10 bins creates extremely sparse 3-D
+    histograms (10³ = 1000 cells), inflating TE from noise.  The cube-root
+    heuristic keeps cell occupancy reasonable.
+
+    Clamped to [3, fallback] so we always have enough resolution without
+    exceeding the caller's upper bound.
+    """
+    if n < 30:
+        return 3
+    bins = int(round(n ** (1.0 / 3.0)))
+    return max(3, min(bins, fallback))
+
+
 def run_transfer_entropy_analysis(
     sentiment_ts: pd.Series,
     returns_ts: pd.Series,
     max_lag: int = 12,
-    n_bins: int = 10,
+    n_bins: int | None = None,
     n_perms: int = 200,
 ) -> Dict[str, Any]:
     """
@@ -261,6 +278,10 @@ def run_transfer_entropy_analysis(
 
     s_arr = aligned["s"].values.astype(float)
     r_arr = aligned["r"].values.astype(float)
+
+    # Adaptive binning: choose bins based on sample size when not specified
+    if n_bins is None:
+        n_bins = _adaptive_bins(n)
 
     logger.info(
         "Transfer Entropy: %d obs, max_lag=%d, n_bins=%d, n_perms=%d",
@@ -338,6 +359,7 @@ def run_transfer_entropy_analysis(
 
     return {
         "n_obs": int(n),
+        "n_bins_used": int(n_bins),
         "n_sentiment_pts": int(n_sentiment_pts),
         "n_returns_pts": int(n_returns_pts),
         "lag_profile_s2r": lag_profile_s2r,

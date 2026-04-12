@@ -17,17 +17,9 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Import Polygon.io (Massive API) collector — exclusive price feed
-try:
-    from collectors.massive_scraper import (
-        fetch_price_series_polygon,
-        POLYGON_TICKER_MAP as _POLYGON_MAP,
-    )
-    _MASSIVE_AVAILABLE = True
-except ImportError:
-    _MASSIVE_AVAILABLE = False
-    _POLYGON_MAP = {}
-    logger.warning("massive_scraper not importable — Polygon feed disabled")
+# Polygon.io (Massive API) disabled — Yahoo Finance is the exclusive price feed
+_MASSIVE_AVAILABLE = False
+_POLYGON_MAP = {}
 
 
 def _to_log_returns(closes: pd.Series, resample_to: str | None = None) -> pd.Series:
@@ -185,32 +177,7 @@ def fetch_price_data(
         except Exception as exc:
             logger.warning("Écriture cache prix impossible pour %s: %s", ticker_upper, exc)
 
-    # ── Primary feed: Polygon.io (Massive API) — US equities + forex ────────
-    # Polygon data is UTC-native and real-time, so no hybrid gap-fill is needed.
-    if _MASSIVE_AVAILABLE and _POLYGON_MAP.get(ticker_upper) is not None:
-        closes = fetch_price_series_polygon(
-            platform_ticker=ticker_upper,
-            interval=interval,
-            start=start,
-            end=end,
-            period=period if not start else None,
-        )
-        if closes is not None and not closes.empty:
-            resample = "4h" if interval not in ("1d", "5d", "1wk", "1mo", "3mo") else None
-            log_returns = _to_log_returns(closes, resample_to=resample)
-            if not log_returns.empty:
-                _write_cache(log_returns)
-                logger.info(
-                    "fetch_price_data: %s ← Polygon — %d log-return points [%s]",
-                    ticker_upper, len(log_returns), interval,
-                )
-                return log_returns
-        logger.warning(
-            "fetch_price_data: Polygon returned no data for %s [%s] — falling back to yfinance",
-            ticker_upper, interval,
-        )
-
-    # ── Fallback: yfinance ───────────────────────────────────────────────────
+    # ── Primary feed: Yahoo Finance ─────────────────────────────────────────
     yf_ticker = _resolve_yfinance_ticker(ticker_upper)
     try:
         import yfinance as yf

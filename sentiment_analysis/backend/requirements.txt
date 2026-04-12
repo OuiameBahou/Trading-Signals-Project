@@ -59,8 +59,6 @@ statsmodels>=0.14.0
 scikit-learn>=1.3.0
 hmmlearn>=0.3.0
 
-# ── Advanced Analytics (Modules 1-3) ────────────────────────────────────────
+# ── Advanced Analytics (Modules 2-3) ────────────────────────────────────────
 # EGARCH-X / GARCH-X volatility models (Module 2d)
 arch>=5.4.0
-# DTW distance (Module 1 – optional; pure-numpy fallback used if absent)
-dtaidistance>=2.3.0
