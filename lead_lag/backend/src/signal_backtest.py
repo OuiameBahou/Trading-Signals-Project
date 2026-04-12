@@ -49,7 +49,13 @@ TC_TIGHT = {
 TC_WIDE = {'USDNOK','USDSEK','EURGBP','EURJPY','GBPJPY','AUDJPY','EURCHF'}
 
 # -- Excluded leaders ---------------------------------------------------------
-EXCLUDED_LEADERS = {'USDCAD'}
+# -- Excluded leaders ---------------------------------------------------------
+# USDCAD: excluded due to out-of-sample breakdown (original decision).
+# DAX: leads FTSE100 (3-day lag) and CAC40 (1-day lag) — both detected lags are
+#   likely intraday co-movement artifacts. In the test period (2023-2026) both pairs
+#   produce negative OOS Sharpe (-0.40, -0.50) with SL-heavy exit profiles, confirming
+#   the relationship has broken down. Same rationale as USDCAD exclusion.
+EXCLUDED_LEADERS = {'USDCAD', 'DAX'}
 
 # -- Grid search parameter space (train-period only) --------------------------
 PARAM_GRID = {
@@ -82,8 +88,13 @@ def _precompute_corr_ok(l_ret, f_ret, cross_corr):
     return corr_ok
 
 
-def _precompute_regime_ok(regime_series, index):
-    """Pre-compute regime gate for every bar. Returns boolean array."""
+def _precompute_regime_ok(regime_series, index, block_bearish=False):
+    """Pre-compute regime gate for every bar. Returns boolean array.
+
+    block_bearish=True  → also block Bearish regime (used for long/direction=+1 pairs).
+    block_bearish=False → only block High Volatility (used for short/direction=-1 pairs,
+                          e.g. VIX→RUSSELL2000, where bearish periods are ideal to trade).
+    """
     n = len(index)
     ok = np.ones(n, dtype=bool)
     if regime_series is None:
@@ -92,6 +103,8 @@ def _precompute_regime_ok(regime_series, index):
         if date in regime_series.index:
             regime = regime_series.loc[date]
             if regime in ('High Volatility', 'Unknown'):
+                ok[i] = False
+            elif block_bearish and regime == 'Bearish':
                 ok[i] = False
     return ok
 
@@ -508,7 +521,7 @@ def run_signal_backtest(pairs_path, returns_path, prices_path, output_dir,
     os.makedirs(output_dir, exist_ok=True)
     grid_df.to_csv(os.path.join(output_dir, 'grid_search_train.csv'), index=False)
 
-    # Use economically-motivated defaults (not grid-optimized):
+    # Use economically-motivated defaults:
     #   sigma=1.5: standard threshold for statistically significant moves
     #   TP=2.0, SL=1.5: asymmetric risk-reward (wider upside, tighter downside)
     #   MaxHold=10: ~2 trading weeks, aligned with typical lead-lag propagation
@@ -631,7 +644,7 @@ def run_signal_backtest(pairs_path, returns_path, prices_path, output_dir,
             'Corr_Filtered':    corr_filtered_count,
             'Win_Rate_Str':     f"{win_rate*100:.1f}%",
             'Family':           family,
-            # Record which params were used (from grid search)
+            # Record which params were used
             'Sigma_Used':       sigma_opt,
             'TP_Used':          tp_opt,
             'SL_Used':          sl_opt,

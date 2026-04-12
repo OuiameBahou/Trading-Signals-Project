@@ -3,11 +3,25 @@ Lead-Lag Signal Platform — Flask API + Frontend Server
 Attijariwafa Bank | Quant Research Division
 """
 import os
+import sys
 import json
 import pandas as pd
 import numpy as np
 from flask import Flask, jsonify, send_from_directory, abort
 from flask_cors import CORS
+
+# Import backtest helpers for the per-pair equity-curve endpoint
+_SRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
+try:
+    from signal_backtest import (
+        _backtest_pair_loop, _precompute_corr_ok, _precompute_regime_ok,
+        TC_TIGHT, TC_WIDE, TRAIN_START, TRAIN_END, TEST_START, TEST_END,
+    )
+    _BACKTEST_AVAILABLE = True
+except Exception:
+    _BACKTEST_AVAILABLE = False
 
 app = Flask(__name__, static_folder='../frontend/dist', template_folder='../frontend/dist')
 CORS(app)
@@ -326,6 +340,16 @@ def api_trading_signals_freq(frequency):
         for _, row in regime_df.iterrows():
             regime_map[(row['Leader'], row['Follower'])] = row.get('Current_Regime', 'Unknown')
 
+    # Keep only Forte (triple-validated) pairs
+    if 'Robustesse' in df.columns:
+        df = df[df['Robustesse'] == 'Forte'].copy()
+    if df.empty:
+        return jsonify({
+            'leaders': {}, 'frequency': frequency,
+            'label': TRADING_FREQ_LABELS.get(frequency, frequency),
+            'total_pairs': 0
+        })
+
     # Enrich with categories and regime
     for idx, row in df.iterrows():
         if 'Cat_Leader' not in df.columns or pd.isna(row.get('Cat_Leader')):
@@ -356,6 +380,111 @@ def api_trading_signals_freq(frequency):
         'frequency':   frequency,
         'label':       TRADING_FREQ_LABELS.get(frequency, frequency),
         'total_pairs': len(df),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Per-pair equity curve  (reuses the backtest loop on demand)
+# ---------------------------------------------------------------------------
+@app.route('/api/signals/equity/<leader>/<follower>')
+def api_signals_equity(leader, follower):
+    if not _BACKTEST_AVAILABLE:
+        return jsonify({'error': 'Backtest module unavailable'}), 503
+
+    # Fetch saved params for this pair
+    bt_df = load_csv(os.path.join(BASE_DIR, 'results', 'signals', 'backtest_daily.csv'))
+    if bt_df is None:
+        return jsonify({'error': 'No backtest data'}), 404
+    mask = (bt_df['Leader'] == leader) & (bt_df['Follower'] == follower)
+    if not mask.any():
+        return jsonify({'error': f'{leader}->{follower} not found'}), 404
+    row = bt_df[mask].iloc[0]
+
+    sigma     = float(row.get('Sigma_Used',   1.5))
+    tp        = float(row.get('TP_Used',       2.0))
+    sl        = float(row.get('SL_Used',       1.5))
+    max_hold  = int(row.get('MaxHold_Used',   10))
+    lead_days = int(row.get('Lead_Days_Used', 1))
+    direction = int(row.get('Direction',       1))
+    tc        = 0.0001 if follower in TC_TIGHT else (0.0003 if follower in TC_WIDE else 0.0002)
+
+    # Load returns
+    try:
+        returns_df = pd.read_csv(os.path.join(DATA_DIR, 'returns_daily.csv'),
+                                 index_col=0, parse_dates=True)
+    except Exception:
+        return jsonify({'error': 'Returns data not found'}), 404
+    if leader not in returns_df.columns or follower not in returns_df.columns:
+        return jsonify({'error': 'Asset columns missing'}), 404
+
+    # Train-period std calibration
+    l_tr = returns_df[leader].loc[TRAIN_START:TRAIN_END].dropna()
+    f_tr = returns_df[follower].loc[TRAIN_START:TRAIN_END].dropna()
+    comm = l_tr.index.intersection(f_tr.index)
+    l_std = float(l_tr.loc[comm].std())
+    f_std = float(f_tr.loc[comm].std())
+
+    # Test-period data
+    l_test = returns_df[leader].loc[TEST_START:TEST_END].dropna()
+    f_test = returns_df[follower].loc[TEST_START:TEST_END].dropna()
+    comm_t = l_test.index.intersection(f_test.index)
+    l_test = l_test.loc[comm_t]
+    f_test = f_test.loc[comm_t]
+
+    # Regime data
+    regime_series = None
+    rp = os.path.join(STATS_DIR, 'regimes', 'pairs', f'regime_{leader}.csv')
+    if os.path.exists(rp):
+        rdf = pd.read_csv(rp, index_col=0, parse_dates=True)
+        if 'Regime' in rdf.columns:
+            regime_series = rdf['Regime']
+
+    corr_ok   = _precompute_corr_ok(l_test, f_test, float(direction))
+    regime_ok = _precompute_regime_ok(regime_series, l_test.index)
+
+    _, daily_arr, trade_details, _ = _backtest_pair_loop(
+        l_test.values, f_test.values, l_std, f_std,
+        lead_days, direction, leader,
+        corr_ok, regime_ok,
+        sigma, tp, sl, max_hold, 2 * tc,
+    )
+
+    daily_ret   = pd.Series(daily_arr, index=f_test.index)
+    equity_ser  = (1 + daily_ret).cumprod()
+
+    equity_data = [{'date': d.strftime('%Y-%m-%d'), 'value': round(float(v), 6)}
+                   for d, v in equity_ser.items()]
+
+    try:
+        monthly = daily_ret.resample('ME').apply(lambda x: float((1 + x).prod() - 1))
+    except Exception:
+        monthly = daily_ret.resample('M').apply(lambda x: float((1 + x).prod() - 1))
+    monthly_pnl = [{'month': d.strftime('%b %y'), 'return': round(float(v) * 100, 2)}
+                   for d, v in monthly.items()]
+
+    dates     = f_test.index.tolist()
+    trade_log = []
+    for td in trade_details:
+        ei, xi = td['entry_idx'], td['exit_idx']
+        trade_log.append({
+            'entry_date':  dates[ei].strftime('%Y-%m-%d') if ei < len(dates) else None,
+            'exit_date':   dates[xi].strftime('%Y-%m-%d') if xi < len(dates) else None,
+            'direction':   int(td['direction']),
+            'net_ret':     round(float(td['net_ret']) * 100, 3),
+            'exit_reason': td['exit_reason'],
+            'hold_days':   int(td['hold_days']),
+            'pos_size':    round(float(td['pos_size']), 3),
+        })
+
+    return jsonify({
+        'leader':      leader,
+        'follower':    follower,
+        'params':      {'sigma': sigma, 'tp': tp, 'sl': sl,
+                        'max_hold': max_hold, 'lead_days': lead_days},
+        'equity':      equity_data,
+        'monthly_pnl': monthly_pnl,
+        'trades':      trade_log,
+        'period':      {'start': TEST_START, 'end': TEST_END},
     })
 
 
