@@ -31,7 +31,7 @@ const srColor  = v => v >= 0.5 ? 'text-emerald-400' : v >= 0.2 ? 'text-green-400
 const wrColor  = v => v >= 0.6 ? 'text-emerald-400' : v >= 0.5 ? 'text-green-400' : v >= 0.45 ? 'text-yellow-400' : 'text-red-400';
 const retColor = v => v >= 0 ? 'text-emerald-400' : 'text-red-400';
 
-const EXIT_LABELS = { TP: 'Take Profit', SL: 'Stop Loss', Leader_Reversal: 'Leader Rev.', MaxHold: 'Max Hold', EndOfPeriod: 'End of Period' };
+const EXIT_LABELS = { Leader_Reversal: 'Leader Rev.', EndOfPeriod: 'End of Period' };
 
 /* ── custom tooltip ───────────────────────────────────────────────────── */
 // mode: 'dollar' → $1,234  |  'pct' → +1.23%  |  'pnl' → +$1,234
@@ -182,7 +182,7 @@ const TradingSignals = () => {
                         Trading <span className="text-awb-red">Signals</span>
                     </h2>
                     <p className="t-text-m text-xs font-bold uppercase tracking-widest mt-1">
-                        Institutional Backtest · Walk-Forward Validation · Dynamic Exit Strategy
+                        Institutional Backtest · Walk-Forward Validation · Leader-Reversal Exit
                     </p>
                 </div>
             </div>
@@ -311,9 +311,7 @@ const TradingSignals = () => {
                                     <div className="flex flex-wrap gap-2 text-[9px] font-bold uppercase tracking-widest">
                                         {[
                                             { l: 'Entry', v: '1.5σ', c: 'text-blue-400' },
-                                            { l: 'TP', v: '+2.0σ', c: 'text-emerald-400' },
-                                            { l: 'SL', v: '-1.5σ', c: 'text-red-400' },
-                                            { l: 'Max Hold', v: '10d', c: 'text-awb-gold' },
+                                            { l: 'Exit', v: 'Leader Reversal', c: 'text-emerald-400' },
                                             { l: 'Regime', v: 'Bull+Range', c: 'text-cyan-400' },
                                         ].map(x => (
                                             <div key={x.l} className="flex items-center gap-1 t-card border t-border-s rounded-lg px-2 py-1">
@@ -517,9 +515,7 @@ const TradingSignals = () => {
                                                                                         </td>
                                                                                         <td className="px-3 py-2">
                                                                                             <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wide
-                                                                                                ${t.exit_reason === 'TP' ? 'bg-emerald-500/10 text-emerald-400' :
-                                                                                                  t.exit_reason === 'SL' ? 'bg-red-500/10 text-red-400' :
-                                                                                                  t.exit_reason === 'Leader_Reversal' ? 'bg-blue-500/10 text-blue-400' :
+                                                                                                ${t.exit_reason === 'Leader_Reversal' ? 'bg-blue-500/10 text-blue-400' :
                                                                                                   'bg-gray-500/10 text-gray-400'}`}>
                                                                                                 {EXIT_LABELS[t.exit_reason] || t.exit_reason}
                                                                                             </span>
@@ -540,10 +536,8 @@ const TradingSignals = () => {
                                                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-awb-gold mb-3">Exit Breakdown</div>
                                                         <div className="flex flex-wrap gap-3">
                                                             {[
-                                                                { key: 'TP_Exits',         label: 'Take Profit',    color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-                                                                { key: 'SL_Exits',         label: 'Stop Loss',      color: 'bg-red-500/10 text-red-400 border-red-500/20' },
-                                                                { key: 'Leader_Rev_Exits', label: 'Leader Rev.',    color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-                                                                { key: 'MaxHold_Exits',    label: 'Max Hold',       color: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
+                                                                { key: 'Leader_Rev_Exits',  label: 'Leader Reversal', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+                                                                { key: 'EndOfPeriod_Exits', label: 'End of Period',   color: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
                                                             ].map(x => (
                                                                 <div key={x.key} className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-[10px] font-bold ${x.color}`}>
                                                                     <span className="t-text-m font-bold uppercase tracking-wider text-[8px]">{x.label}</span>

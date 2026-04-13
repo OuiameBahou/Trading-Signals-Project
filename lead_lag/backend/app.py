@@ -401,9 +401,6 @@ def api_signals_equity(leader, follower):
     row = bt_df[mask].iloc[0]
 
     sigma     = float(row.get('Sigma_Used',   1.5))
-    tp        = float(row.get('TP_Used',       2.0))
-    sl        = float(row.get('SL_Used',       1.5))
-    max_hold  = int(row.get('MaxHold_Used',   10))
     lead_days = int(row.get('Lead_Days_Used', 1))
     direction = int(row.get('Direction',       1))
     tc        = 0.0001 if follower in TC_TIGHT else (0.0003 if follower in TC_WIDE else 0.0002)
@@ -446,7 +443,7 @@ def api_signals_equity(leader, follower):
         l_test.values, f_test.values, l_std, f_std,
         lead_days, direction, leader,
         corr_ok, regime_ok,
-        sigma, tp, sl, max_hold, 2 * tc,
+        sigma, 2 * tc,
     )
 
     daily_ret   = pd.Series(daily_arr, index=f_test.index)
@@ -479,8 +476,7 @@ def api_signals_equity(leader, follower):
     return jsonify({
         'leader':      leader,
         'follower':    follower,
-        'params':      {'sigma': sigma, 'tp': tp, 'sl': sl,
-                        'max_hold': max_hold, 'lead_days': lead_days},
+        'params':      {'sigma': sigma, 'lead_days': lead_days},
         'equity':      equity_data,
         'monthly_pnl': monthly_pnl,
         'trades':      trade_log,

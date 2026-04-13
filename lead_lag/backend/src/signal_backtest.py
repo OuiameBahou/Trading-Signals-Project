@@ -7,14 +7,12 @@ Entry: we wait Lead_Days after a strong leader move before entering the follower
 model must actually elapse; entering same-day contradicts the hypothesis).
 
 Exit conditions (checked daily at close, in priority order):
-  1. Take Profit: cumulative trade return >= +TP_MULT x follower_train_std x pos_size
-  2. Stop Loss:   cumulative trade return <= -SL_MULT x follower_train_std x pos_size
-  3. Leader reversal: lagged leader fires opposite signal
-  4. Max hold: fallback exit after MAX_HOLD_DAYS if none of above triggered
+  1. Leader reversal: lagged leader fires an opposite signal
+  2. End of period: position carried to end of test window
 
-Strategy parameters (SIGMA_THRESHOLD, TP_MULT, SL_MULT, MAX_HOLD_DAYS) are selected
-via grid search on the train period (2015-2022) and applied unchanged to the test
-period (2023-2026).  No look-ahead bias.
+Strategy parameter (SIGMA_THRESHOLD) is selected via grid search on the train
+period (2015-2022) and applied unchanged to the test period (2023-2026).
+No look-ahead bias.
 
 PnL is compounded (equity-based), not additive.
 Two Sharpe variants reported: trade-level (per-signal edge) and daily-return (time series).
@@ -25,7 +23,6 @@ import os
 import pandas as pd
 import numpy as np
 from scipy import stats
-from itertools import product
 
 # -- Date constants -----------------------------------------------------------
 TRAIN_START = '2015-01-01'
@@ -60,9 +57,6 @@ EXCLUDED_LEADERS = {'USDCAD', 'DAX'}
 # -- Grid search parameter space (train-period only) --------------------------
 PARAM_GRID = {
     'sigma': [1.0, 1.25, 1.5, 1.75, 2.0, 2.5],
-    'tp':    [1.5, 2.0, 2.5, 3.0],
-    'sl':    [1.0, 1.5, 2.0, 2.5],
-    'hold':  [5, 7, 10, 15, 20],
 }
 
 
@@ -111,18 +105,16 @@ def _precompute_regime_ok(regime_series, index, block_bearish=False):
 
 def _backtest_pair_loop(l_arr, f_arr, l_std, f_std, lead_days, direction,
                         leader_name, corr_ok, regime_ok,
-                        sigma_threshold, tp_mult, sl_mult, max_hold_days,
-                        tc_roundtrip):
+                        sigma_threshold, tc_roundtrip):
     """
     Core trade loop on numpy arrays (fast for grid search).
     l_arr/f_arr: numpy 1d arrays of returns.
     corr_ok/regime_ok: pre-computed boolean arrays (same length).
+    Exit: only when the leader fires an opposite signal (Leader_Reversal).
     Returns (trades_list, daily_ret_arr, trade_details, corr_filtered_count).
     """
     n = len(l_arr)
     threshold_single = sigma_threshold * l_std
-    tp_threshold = tp_mult * f_std
-    sl_threshold = sl_mult * f_std
 
     trades        = []
     daily_ret     = np.zeros(n)
@@ -148,23 +140,14 @@ def _backtest_pair_loop(l_arr, f_arr, l_std, f_std, lead_days, direction,
             cum_ret       = equity_mult - 1.0
             daily_ret[i]  = position_ret
 
-            tp_eff = tp_threshold * entry_position_size
-            sl_eff = sl_threshold * entry_position_size
-
             exit_now    = False
             exit_reason = ''
 
-            if cum_ret >= tp_eff:
-                exit_now, exit_reason = True, 'TP'
-            elif cum_ret <= -sl_eff:
-                exit_now, exit_reason = True, 'SL'
-            elif abs(l_val_lag) > threshold_single:
+            if abs(l_val_lag) > threshold_single:
                 leader_dir_now = 1 if l_val_lag > 0 else -1
                 signal_dir = leader_dir_now * direction
                 if signal_dir != trade_dir:
                     exit_now, exit_reason = True, 'Leader_Reversal'
-            if not exit_now and (i - trade_start) >= max_hold_days:
-                exit_now, exit_reason = True, 'MaxHold'
 
             if exit_now:
                 net_ret = cum_ret - tc_roundtrip
@@ -218,15 +201,12 @@ def _backtest_pair_loop(l_arr, f_arr, l_std, f_std, lead_days, direction,
 
 def _grid_search_train(pairs_data, param_grid):
     """
-    Exhaustive grid search over (sigma, tp, sl, hold) on train-period returns.
+    Exhaustive grid search over sigma on train-period returns.
     Optimizes pooled trade Sharpe across all pairs.
     Returns (best_params dict, full results DataFrame).
     """
-    combos = list(product(
-        param_grid['sigma'], param_grid['tp'],
-        param_grid['sl'],    param_grid['hold'],
-    ))
-    print(f'=== GRID SEARCH ON TRAIN PERIOD ({len(combos)} combos x {len(pairs_data)} pairs) ===')
+    combos = list(param_grid['sigma'])
+    print(f'=== GRID SEARCH ON TRAIN PERIOD ({len(combos)} sigma values x {len(pairs_data)} pairs) ===')
 
     # Pre-compute rolling correlation and regime gates ONCE per pair (the bottleneck)
     for p in pairs_data:
@@ -239,14 +219,14 @@ def _grid_search_train(pairs_data, param_grid):
     best_params = None
     rows        = []
 
-    for sigma, tp, sl, hold in combos:
+    for sigma in combos:
         all_trades = []
         for p in pairs_data:
             trades, _, _, _ = _backtest_pair_loop(
                 p['l_train_arr'], p['f_train_arr'], p['l_std'], p['f_std'],
                 p['lead_days'], p['direction'],
                 p['leader'], p['train_corr_ok'], p['train_regime_ok'],
-                sigma, tp, sl, hold, p['tc_roundtrip'],
+                sigma, p['tc_roundtrip'],
             )
             all_trades.extend(trades)
 
@@ -260,30 +240,27 @@ def _grid_search_train(pairs_data, param_grid):
         score  = (mean_r / std_r) if std_r > 0 else 0.0
 
         rows.append({
-            'sigma': sigma, 'tp': tp, 'sl': sl, 'hold': hold,
+            'sigma': sigma,
             'n_trades': n, 'mean_ret': round(mean_r, 8),
             'win_rate': round(wr, 4), 'score': round(score, 6),
         })
         if score > best_score:
             best_score  = score
-            best_params = {'sigma': sigma, 'tp': tp, 'sl': sl, 'hold': hold}
+            best_params = {'sigma': sigma}
 
     df = pd.DataFrame(rows).sort_values('score', ascending=False)
 
-    print(f'  Best params: sigma={best_params["sigma"]}, '
-          f'tp={best_params["tp"]}, sl={best_params["sl"]}, '
-          f'hold={best_params["hold"]}')
+    print(f'  Best params: sigma={best_params["sigma"]}')
     print(f'  Train pooled: {df.iloc[0]["n_trades"]} trades, '
           f'WR={df.iloc[0]["win_rate"]*100:.1f}%, '
           f'score={df.iloc[0]["score"]:.4f}')
     print()
 
-    # Sensitivity: show top 10 combos to prove the optimum is in a flat region
-    print('  Top 10 parameter combinations (train):')
-    print(f'  {"sigma":>6} {"tp":>5} {"sl":>5} {"hold":>5} {"trades":>7} {"WR":>7} {"score":>8}')
-    for _, r in df.head(10).iterrows():
-        print(f'  {r["sigma"]:>6.2f} {r["tp"]:>5.1f} {r["sl"]:>5.1f} '
-              f'{int(r["hold"]):>5} {int(r["n_trades"]):>7} '
+    # Sensitivity: show all sigma values
+    print('  Sigma sensitivity (train):')
+    print(f'  {"sigma":>6} {"trades":>7} {"WR":>7} {"score":>8}')
+    for _, r in df.iterrows():
+        print(f'  {r["sigma"]:>6.2f} {int(r["n_trades"]):>7} '
               f'{r["win_rate"]*100:>6.1f}% {r["score"]:>8.4f}')
     print()
 
@@ -521,18 +498,12 @@ def run_signal_backtest(pairs_path, returns_path, prices_path, output_dir,
     os.makedirs(output_dir, exist_ok=True)
     grid_df.to_csv(os.path.join(output_dir, 'grid_search_train.csv'), index=False)
 
-    # Use economically-motivated defaults:
+    # Use economically-motivated default:
     #   sigma=1.5: standard threshold for statistically significant moves
-    #   TP=2.0, SL=1.5: asymmetric risk-reward (wider upside, tighter downside)
-    #   MaxHold=10: ~2 trading weeks, aligned with typical lead-lag propagation
     sigma_opt = 1.5
-    tp_opt    = 2.0
-    sl_opt    = 1.5
-    hold_opt  = 10
 
     # -- Step 2: Final backtest on TEST with default params -------------------
-    print(f'=== OOS BACKTEST (sigma={sigma_opt}, tp={tp_opt}, '
-          f'sl={sl_opt}, hold={hold_opt}) ===')
+    print(f'=== OOS BACKTEST (sigma={sigma_opt}) ===')
 
     results         = []
     family_trades   = {}
@@ -554,8 +525,7 @@ def run_signal_backtest(pairs_path, returns_path, prices_path, output_dir,
             p['l_test'].values, p['f_test'].values, p['l_std'], p['f_std'],
             p['lead_days'], p['direction'],
             leader, p['test_corr_ok'], p['test_regime_ok'],
-            sigma_opt, tp_opt, sl_opt, hold_opt,
-            p['tc_roundtrip'],
+            sigma_opt, p['tc_roundtrip'],
         )
         # Convert numpy array back to Series for portfolio aggregation
         daily_ret = pd.Series(daily_ret_arr, index=p['f_test'].index)
@@ -635,20 +605,14 @@ def run_signal_backtest(pairs_path, returns_path, prices_path, output_dir,
             'Mean_Trade_Ret':   round(mean_ret, 6),
             'Trades_Per_Year':  round(trades_per_year, 2),
             'Avg_Hold_Days':    round(avg_hold, 1),
-            'TP_Exits':         exit_counts.get('TP', 0),
-            'SL_Exits':         exit_counts.get('SL', 0),
-            'Leader_Rev_Exits': exit_counts.get('Leader_Reversal', 0),
-            'MaxHold_Exits':    exit_counts.get('MaxHold', 0),
+            'Leader_Rev_Exits':   exit_counts.get('Leader_Reversal', 0),
+            'EndOfPeriod_Exits':  exit_counts.get('EndOfPeriod', 0),
             'Avg_Position_Size': round(np.mean([td.get('pos_size', 1.0)
                                                 for td in trade_details]), 3) if trade_details else 1.0,
             'Corr_Filtered':    corr_filtered_count,
             'Win_Rate_Str':     f"{win_rate*100:.1f}%",
             'Family':           family,
-            # Record which params were used
             'Sigma_Used':       sigma_opt,
-            'TP_Used':          tp_opt,
-            'SL_Used':          sl_opt,
-            'MaxHold_Used':     hold_opt,
         })
 
     df_results = pd.DataFrame(results).sort_values('Sharpe_Daily', ascending=False)
@@ -698,7 +662,7 @@ def run_signal_backtest(pairs_path, returns_path, prices_path, output_dir,
     print(df_results[['Leader','Follower','Lead_Days_Used','Sharpe_Ratio','Sharpe_Daily',
                        'Win_Rate','N_Trades','Annual_Return','Max_Drawdown',
                        'Profit_Factor','Avg_Hold_Days',
-                       'TP_Exits','SL_Exits','Leader_Rev_Exits','MaxHold_Exits']].to_string())
+                       'Leader_Rev_Exits','EndOfPeriod_Exits']].to_string())
     print()
 
     all_trades = df_results['N_Trades'].sum()
@@ -743,8 +707,7 @@ def run_signal_backtest(pairs_path, returns_path, prices_path, output_dir,
     print('=== EXIT REASON SUMMARY ===')
     for _, r in df_results.iterrows():
         print(f"{r['Leader']}->{r['Follower']}: "
-              f"TP={r['TP_Exits']} SL={r['SL_Exits']} "
-              f"LeaderRev={r['Leader_Rev_Exits']} MaxHold={r['MaxHold_Exits']}")
+              f"LeaderRev={r['Leader_Rev_Exits']} EndOfPeriod={r['EndOfPeriod_Exits']}")
 
     return df_results, df_families
 
