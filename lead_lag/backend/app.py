@@ -256,10 +256,14 @@ def api_summary_stats():
     n_triple = sum(1 for p in all_pairs_data if int(p.get('N_Methods', 0)) == 3)
     n_total  = len(all_pairs_data)
 
-    # Top leader — Forte + Moderate, exclude USDCAD (broke down out-of-sample)
+    # Top leader — must exist in trading signals backtest AND be Forte/Moderate
+    bt_path = os.path.join(BASE_DIR, 'results', 'signals', 'backtest_daily.csv')
+    bt_df   = load_csv(bt_path)
+    signal_leaders = set(bt_df['Leader'].unique()) if bt_df is not None else set()
+
     validated_pairs = [p for p in all_pairs_data
                        if p.get('Robustesse') in ('Forte', 'Moderate')
-                       and p.get('Leader') != 'USDCAD']
+                       and p.get('Leader') in signal_leaders]
     leader_freq     = {}
     leader_strength = {}
     for p in validated_pairs:
@@ -268,8 +272,8 @@ def api_summary_stats():
             leader_freq[l]     = leader_freq.get(l, 0) + 1
             leader_strength[l] = leader_strength.get(l, 0) + float(p.get('Score_Final', 0))
 
-    top_leader = 'DAX'
-    top_count  = 3
+    top_leader = max(signal_leaders) if signal_leaders else 'N/A'
+    top_count  = 0
     if leader_freq:
         top_leader = max(leader_freq,
                          key=lambda l: (leader_freq[l], leader_strength.get(l, 0)))
