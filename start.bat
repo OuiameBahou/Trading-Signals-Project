@@ -1,4 +1,14 @@
 @echo off
+echo Checking frontend dependencies...
+if not exist "lead_lag\frontend\node_modules" (
+    echo node_modules not found — running npm install...
+    cd lead_lag\frontend
+    npm install
+    cd ..\..
+) else (
+    echo node_modules already present, skipping install.
+)
+
 echo Starting Lead-Lag Backend (port 5000)...
 start cmd /k "cd lead_lag/backend && py app.py"
 
