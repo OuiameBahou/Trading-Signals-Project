@@ -1,0 +1,227 @@
+================================================================================
+  TRADING SIGNALS PROJECT — FULL SETUP GUIDE
+  How to run this project on a new machine
+================================================================================
+
+--------------------------------------------------------------------------------
+  SYSTEM REQUIREMENTS
+--------------------------------------------------------------------------------
+
+  Python   : 3.10.x  (https://www.python.org/downloads/release/python-3100/)
+  Node.js  : 20.17.0 (https://nodejs.org/)  — NOTE: Vite 7 requires 20.19+
+             Recommended: install 20.19+ or 22.x to avoid Vite warnings
+  npm      : 10.8.2+ (bundled with Node.js)
+
+
+--------------------------------------------------------------------------------
+  PROJECT STRUCTURE
+--------------------------------------------------------------------------------
+
+  trading_signals_project/
+  ├── lead_lag/
+  │   ├── backend/          → Flask API (port 5000)
+  │   └── frontend/         → React/Vite app (port 5173 dev / served by Flask prod)
+  ├── FX/
+  │   └── backend/          → FastAPI server (port 8001)
+  └── sentiment_analysis/
+      └── backend/          → NLP/Sentiment FastAPI (port 8002)
+
+
+--------------------------------------------------------------------------------
+  1. LEAD-LAG BACKEND  (lead_lag/backend)
+  Flask API — port 5000
+--------------------------------------------------------------------------------
+
+  Install (one command):
+    pip install flask==3.1.3 flask-cors==6.0.2 pandas==2.2.2 numpy==1.26.4 \
+                scipy==1.15.3 statsmodels==0.14.5 hmmlearn==0.3.3 \
+                openpyxl==3.1.5 yfinance==0.2.66
+
+  Or install from file:
+    pip install -r lead_lag/backend/requirements.txt
+
+  Exact versions (tested):
+    flask          == 3.1.3
+    flask-cors     == 6.0.2
+    pandas         == 2.2.2
+    numpy          == 1.26.4
+    scipy          == 1.15.3
+    statsmodels    == 0.14.5
+    hmmlearn       == 0.3.3
+    openpyxl       == 3.1.5
+    yfinance       == 0.2.66
+
+  Run:
+    cd lead_lag/backend
+    python app.py
+
+
+--------------------------------------------------------------------------------
+  2. FX / INDICATORS BACKEND  (FX/backend)
+  FastAPI server — port 8001
+--------------------------------------------------------------------------------
+
+  Install (one command):
+    pip install fastapi==0.135.2 uvicorn==0.42.0 pydantic==2.12.5 \
+                pandas==2.2.2 numpy==1.26.4 scipy==1.15.3 \
+                statsmodels==0.14.5 hmmlearn==0.3.3 openpyxl==3.1.5 \
+                yfinance==0.2.66 scikit-learn==1.6.1 requests==2.31.0
+
+  Or install from file:
+    pip install -r FX/requirements.txt
+
+  Exact versions (tested):
+    fastapi        == 0.135.2
+    uvicorn        == 0.42.0
+    starlette      == 1.0.0     (installed with fastapi)
+    pydantic       == 2.12.5
+    pandas         == 2.2.2
+    numpy          == 1.26.4
+    scipy          == 1.15.3
+    statsmodels    == 0.14.5
+    hmmlearn       == 0.3.3
+    openpyxl       == 3.1.5
+    yfinance       == 0.2.66
+    scikit-learn   == 1.6.1
+    requests       == 2.31.0
+
+  Run:
+    cd FX/backend
+    uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+
+
+--------------------------------------------------------------------------------
+  3. SENTIMENT / NLP BACKEND  (sentiment_analysis/backend)
+  FastAPI server — port 8002
+--------------------------------------------------------------------------------
+
+  NOTE: This module requires heavy ML libraries (torch, transformers).
+  Install in a separate virtual environment to avoid conflicts.
+
+  Exact versions (tested):
+    fastapi        == 0.109.0+
+    uvicorn        == 0.27.0+
+    pandas         == 2.0.0+
+    numpy          == 1.26.0+
+    torch          == 2.1.0+
+    transformers   == 4.36.0+
+    openai         == 1.0.0+
+    requests       == 2.31.0+
+    python-dotenv  == 1.0.0+
+    pymongo        == 4.6.0+
+    sqlalchemy     == 2.0.0+
+    tweepy         == 4.14.0+
+    feedparser     == 6.0.0+
+    plotly         == 5.20.0+
+    scipy          == 1.11.0+
+    statsmodels    == 0.14.0+
+    scikit-learn   == 1.3.0+
+    hmmlearn       == 0.3.0+
+    yfinance       == 0.2.36+
+    streamlit      == 1.29.0+
+    wordcloud      == 1.9.0+
+    matplotlib     == 3.8.0+
+    arch           == 5.4.0+
+    boto3          == 1.34.0+
+    pyarrow        == 14.0.0+
+    apscheduler    == 3.10.0+
+    regex          == 2023.10.3+
+    emoji          == 2.8.0+
+
+  Install from file:
+    pip install -r sentiment_analysis/backend/requirements.txt
+
+  Run:
+    cd sentiment_analysis/backend
+    python main.py web
+
+
+--------------------------------------------------------------------------------
+  4. FRONTEND  (lead_lag/frontend)
+  React + Vite — port 5173 (dev) or served by Flask (production)
+--------------------------------------------------------------------------------
+
+  Requires: Node.js 20.19+ or 22.x
+
+  Key packages and versions (from package.json):
+    react              ^19.2.0
+    react-dom          ^19.2.0
+    react-router-dom   ^7.13.1
+    recharts           ^3.7.0
+    framer-motion      ^12.34.3
+    axios              ^1.13.5
+    lucide-react       ^0.575.0
+    tailwindcss        ^4.2.1
+    d3                 ^7.9.0
+    chart.js           ^4.5.1
+    react-chartjs-2    ^5.3.1
+    vite               ^7.3.1
+
+  Install:
+    cd lead_lag/frontend
+    npm install
+
+  Run (development):
+    npm run dev
+
+  Build (production — required before running Flask in prod):
+    npm run build
+
+
+--------------------------------------------------------------------------------
+  5. START EVERYTHING  (recommended)
+--------------------------------------------------------------------------------
+
+  Just run start.bat from the project root:
+    start.bat
+
+  This opens 4 terminals:
+    → Lead-Lag Backend   : python app.py           (port 5000)
+    → FX Backend         : uvicorn main:app         (port 8001)
+    → Sentiment Backend  : python main.py web       (port 8002)
+    → Frontend Dev       : npm run dev              (port 5173)
+
+  Then open:  http://localhost:5173
+
+
+--------------------------------------------------------------------------------
+  6. VIRTUAL ENVIRONMENT (recommended)
+--------------------------------------------------------------------------------
+
+  Create and activate a venv before installing:
+
+    Windows:
+      python -m venv venv
+      venv\Scripts\activate
+      pip install <packages>
+
+    Mac/Linux:
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install <packages>
+
+  TIP: Use one venv for the lead_lag + FX backends (they share the same
+  packages), and a separate venv for sentiment_analysis (heavy ML deps).
+
+
+--------------------------------------------------------------------------------
+  7. COMMON ISSUES
+--------------------------------------------------------------------------------
+
+  "No module named flask"
+    → Make sure you activated the right venv before running python app.py
+
+  "uvicorn not found"
+    → pip install uvicorn
+
+  Vite warning about Node.js version
+    → Upgrade Node.js to 20.19+ or 22.x
+
+  Frontend showing old data after backend changes
+    → Rebuild: cd lead_lag/frontend && npm run build
+    → Hard refresh browser: Ctrl+Shift+R
+
+  Port already in use
+    → Kill the process using that port and restart
+
+================================================================================
