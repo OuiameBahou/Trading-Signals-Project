@@ -204,24 +204,3 @@
   packages), and a separate venv for sentiment_analysis (heavy ML deps).
 
 
---------------------------------------------------------------------------------
-  7. COMMON ISSUES
---------------------------------------------------------------------------------
-
-  "No module named flask"
-    → Make sure you activated the right venv before running python app.py
-
-  "uvicorn not found"
-    → pip install uvicorn
-
-  Vite warning about Node.js version
-    → Upgrade Node.js to 20.19+ or 22.x
-
-  Frontend showing old data after backend changes
-    → Rebuild: cd lead_lag/frontend && npm run build
-    → Hard refresh browser: Ctrl+Shift+R
-
-  Port already in use
-    → Kill the process using that port and restart
-
-================================================================================
