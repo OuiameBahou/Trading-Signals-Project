@@ -7,7 +7,11 @@ import sys
 import json
 import pandas as pd
 import numpy as np
-from flask import Flask, jsonify, send_from_directory, abort
+from io import BytesIO
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from flask import Flask, jsonify, send_from_directory, abort, Response
 from flask_cors import CORS
 
 # Import backtest helpers for the per-pair equity-curve endpoint
@@ -695,6 +699,53 @@ def api_fx_live_signals():
             print(f"Error computing live signal for {pair_name}: {e}")
 
     return jsonify(signals_data)
+
+
+# ---------------------------------------------------------------------------
+# Rolling Correlation Plot (on-the-fly)
+# ---------------------------------------------------------------------------
+@app.route('/api/plot/rolling/<leader>/<follower>')
+def api_plot_rolling(leader, follower):
+    try:
+        returns_df = pd.read_csv(os.path.join(DATA_DIR, 'returns_daily.csv'),
+                                 index_col=0, parse_dates=True)
+    except Exception:
+        abort(404)
+
+    if leader not in returns_df.columns or follower not in returns_df.columns:
+        abort(404)
+
+    windows = [30, 60, 90]
+    colors  = ['#3b82f6', '#f59e0b', '#10b981']
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    fig.patch.set_facecolor('#0f1117')
+    ax.set_facecolor('#0f1117')
+
+    for window, color in zip(windows, colors):
+        roll_corr = returns_df[leader].rolling(window=window).corr(returns_df[follower])
+        ax.plot(roll_corr.index, roll_corr.values,
+                label=f'{window}d', color=color, linewidth=1.5, alpha=0.9)
+
+    ax.axhline(y=0, color='#ffffff30', linewidth=0.8, linestyle='--')
+    ax.set_title(f'Rolling Correlation: {leader} → {follower}',
+                 color='white', fontsize=13, fontweight='bold', pad=12)
+    ax.set_ylabel('Correlation', color='#9ca3af', fontsize=10)
+    ax.tick_params(colors='#6b7280', labelsize=8)
+    for spine in ['bottom', 'left']:
+        ax.spines[spine].set_color('#374151')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.legend(framealpha=0, labelcolor='white', fontsize=9)
+    ax.set_ylim(-1.05, 1.05)
+    fig.tight_layout()
+
+    buf = BytesIO()
+    fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='#0f1117')
+    buf.seek(0)
+    plt.close(fig)
+
+    return Response(buf.getvalue(), mimetype='image/png')
 
 
 # ---------------------------------------------------------------------------

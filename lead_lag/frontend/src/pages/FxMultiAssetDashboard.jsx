@@ -67,6 +67,22 @@ const ScanChartTip = ({ active, payload, label, colorMap }) => {
   );
 };
 
+/* ── Mini chart tooltip ──────────────────────────────────────────────── */
+const MiniChartTip = ({ active, payload, label, color }) => {
+  if (!active || !payload?.length) return null;
+  const val = payload[0]?.value;
+  if (typeof val !== 'number') return null;
+  return (
+    <div className="t-card border t-border-s rounded-lg px-2.5 py-1.5 shadow-xl">
+      <div className="text-[8px] t-text-m font-bold mb-0.5">{fmtDate(label)}</div>
+      <div className={`text-[10px] font-black font-mono ${val >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+        style={{ color }}>
+        ${fmt(val)}
+      </div>
+    </div>
+  );
+};
+
 /* ── Mini chart for regime mode ──────────────────────────────────────── */
 const MiniChart = ({ data, color }) => {
   if (!data?.length) return <div className="h-[80px]" />;
@@ -81,6 +97,8 @@ const MiniChart = ({ data, color }) => {
             <stop offset="95%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
+        <Tooltip content={(props) => <MiniChartTip {...props} color={color} />}
+          cursor={{ stroke: color, strokeWidth: 1, strokeOpacity: 0.4 }} />
         <Area type="monotone" dataKey="value" stroke={color} strokeWidth={1.5}
           fill={`url(#${gradId})`} dot={false} isAnimationActive={false}
           strokeLinejoin="round" strokeLinecap="round" />

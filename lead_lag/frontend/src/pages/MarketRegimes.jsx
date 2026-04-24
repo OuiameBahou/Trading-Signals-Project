@@ -300,7 +300,8 @@ const MarketRegimes = () => {
                 </button>
                 {Object.keys(regimeMeta).map(regime => {
                     const count = distribution[regime] || 0;
-                    if (count === 0 && regime !== 'Unknown') return null;
+                    if (regime === 'Unknown') return null;
+                    if (count === 0 && regime !== 'High Volatility') return null;
                     const meta = regimeMeta[regime] || regimeMeta['Unknown'];
                     return (
                         <button

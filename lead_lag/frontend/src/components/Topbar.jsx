@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Clock, Search, Activity, X, ArrowUpRight, Globe, Zap, Share2, Thermometer, LayoutDashboard, Moon, Sun, Menu } from 'lucide-react';
+import { Clock, Search, Activity, X, ArrowUpRight, Globe, Zap, Share2, Thermometer, LayoutDashboard, Moon, Sun, Menu, Bot } from 'lucide-react';
 import useFetch from '../hooks/useFetch';
 import { useTheme } from '../context/ThemeContext';
 
@@ -142,7 +142,7 @@ const Topbar = ({ activePage, summary, onNavigate, onMenuToggle }) => {
 
     return (
         <header className="h-16 t-bg t-border border-b flex items-center justify-between px-8 sticky top-0 z-30 transition-colors">
-            {/* Left: burger menu + page name */}
+            {/* Left: burger menu + home + page name */}
             <div className="flex items-center gap-4">
                 <button
                     onClick={onMenuToggle}
@@ -150,6 +150,14 @@ const Topbar = ({ activePage, summary, onNavigate, onMenuToggle }) => {
                     title="Open navigation"
                 >
                     <Menu size={16} className="t-text" />
+                </button>
+
+                <button
+                    onClick={() => onNavigate('gateway')}
+                    className="p-2 rounded-xl t-elevated t-border border transition-all hover:border-awb-red/40 hover:bg-awb-red/10 group"
+                    title="Back to Home"
+                >
+                    <Bot size={16} className="t-text-m group-hover:text-awb-red transition-colors" />
                 </button>
 
                 <div className="w-px h-5 t-border-s border-r transition-colors" />

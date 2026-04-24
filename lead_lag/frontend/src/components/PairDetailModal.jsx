@@ -137,12 +137,6 @@ const PairDetailModal = ({ pair, onClose }) => {
                                             </div>
                                         </div>
                                     ))}
-                                    {pair.Lag_Gain != null && (
-                                        <div className="flex justify-between items-center p-3 t-elevated rounded-lg t-border border transition-colors">
-                                            <span className="text-[10px] t-text-m font-bold uppercase tracking-tight transition-colors">Lag Gain</span>
-                                            <span className="text-[11px] font-mono font-black text-emerald-500">+{Number(pair.Lag_Gain).toFixed(4)}</span>
-                                        </div>
-                                    )}
                                 </div>
                             </section>
 

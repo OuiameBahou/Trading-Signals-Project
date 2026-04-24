@@ -483,9 +483,6 @@ const FxBacktestRunner = ({ prefill }) => {
                             { lbl: 'DAYS',       key: '_dur' },
                             { lbl: 'ENTRY PX',   key: 'entry_price' },
                             { lbl: 'EXIT PX',    key: 'exit_price' },
-                            { lbl: 'SIZE',       key: 'size' },
-                            { lbl: 'STOP',       key: 'stop' },
-                            { lbl: 'TP',         key: 'take_profit' },
                             { lbl: 'PnL',        key: 'pnl' },
                           ].map(({ lbl, key }) => (
                             <th key={lbl}
@@ -519,9 +516,6 @@ const FxBacktestRunner = ({ prefill }) => {
                             <td className="px-3 py-2 text-[9px] font-mono t-text">
                               {t.exit_price != null ? fmt(t.exit_price, 5) : '—'}
                             </td>
-                            <td className="px-3 py-2 text-[9px] font-mono t-text-m">{t.size}</td>
-                            <td className="px-3 py-2 text-[9px] font-mono t-text-m">{fmt(t.stop, 5)}</td>
-                            <td className="px-3 py-2 text-[9px] font-mono t-text-m">{fmt(t.take_profit, 5)}</td>
                             <td className="px-3 py-2">
                               <span className={`text-[10px] font-black font-mono
                                                 ${t.pnl != null ? ((t.pnl >= 0) ? 'text-emerald-400' : 'text-red-400') : 't-text-m'}`}>
